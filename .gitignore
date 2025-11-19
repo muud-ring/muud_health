@@ -1,0 +1,46 @@
+# Flutter
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+pubspec.lock
+.melos_tool
+
+# Dart
+.dart_tool/
+
+# iOS
+ios/Pods/
+ios/Runner.xcworkspace/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/.symlinks/
+ios/Flutter/App.framework
+xcuserdata/
+DerivedData/
+
+# Android
+android/.gradle/
+android/app/build/
+android/local.properties
+
+# Node backend
+backend/node_modules/
+backend/.env
+backend/npm-debug.log
+backend/yarn-debug.log
+backend/yarn-error.log
+
+# Logs
+*.log
+*.tmp
+
+# MacOS & system files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+
