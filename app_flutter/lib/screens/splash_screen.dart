@@ -20,7 +20,7 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _checkAuth() async {
     final token = await TokenStorage.getToken();
 
-    // Small delay just so the splash doesn't disappear instantly
+    // Small delay so the splash shows briefly
     await Future.delayed(const Duration(milliseconds: 500));
 
     if (!mounted) return;
@@ -42,18 +42,25 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'MUUD Health',
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 16),
-            CircularProgressIndicator(),
-          ],
+    return Scaffold(
+      body: Container(
+        // Purple gradient background like your Figma
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF7A33B6), // top purple
+              Color(0xFF3A1676), // bottom purple
+            ],
+          ),
+        ),
+        child: Center(
+          child: Image.asset(
+            'assets/images/muud_logo.png',
+            width: 180, // adjust to match design
+            fit: BoxFit.contain,
+          ),
         ),
       ),
     );

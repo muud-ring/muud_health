@@ -57,6 +57,14 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+  assets:
+    - assets/images/muud_logo.png
+    - assets/images/muud_logo_color.png
+    - assets/images/google.png
+    - assets/images/apple.png
+    - assets/images/facebook.png
+
+    - assets/images/onboarding/muud_health_intro.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:

@@ -1,43 +1,51 @@
-const express = require("express");
-const cors = require("cors");
-const dotenv = require("dotenv");
-const connectDB = require("./config/db");
-const healthRoute = require("./routes/healthRoute");
-const authRoute = require("./routes/authRoute");
+// index.js
 
-// load .env
+const express = require('express');
+const dotenv = require('dotenv');
+const cors = require('cors');
+const connectDB = require('./config/db');
+
+const authRoute = require('./routes/authRoute');
+const healthRoute = require('./routes/healthRoute');
+
 dotenv.config();
-
-//creates express app
-const app = express();
-
-// connect to MongoDB
 connectDB();
 
-// middlewares
-app.use(cors()); //allows frontend to communicate with this backend.
-app.use(express.json()); // to parse JSON body
+const app = express();
 
-// log every incoming request
+// Allow JSON bodies
+app.use(express.json());
+
+// CORS – allow your Flutter app to talk to this API
+app.use(
+  cors({
+    origin: '*', // you can restrict this later
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
+);
+
+// Simple health check
+app.get('/', (req, res) => {
+  res.send('MUUD Health API is running');
+});
+
+// Public auth routes (NO auth middleware here)
+app.use('/api/auth', authRoute);
+
+// Protected health routes (these can use JWT middleware inside healthRoute)
+app.use('/api/health', healthRoute);
+
+// Catch-all for unknown routes
 app.use((req, res, next) => {
-  console.log("➡️", req.method, req.url);
-  next();
+  res.status(404).json({ message: 'Route not found' });
 });
 
-// routes
-app.use("/health", healthRoute);
-app.use('/api/health', require('./routes/healthRoute'));
-app.use("/api/auth", authRoute);
-app.use('/api/auth', require('./routes/authRoute'));
-
-// default route
-app.get("/", (req, res) => {
-  res.send("MUUD_HEALTH backend is up 🚀");
+// Global error handler (just in case)
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ message: 'Server error.' });
 });
 
-// use PORT from env or 4000 by default
-const PORT = process.env.PORT || 4000;
-
-app.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
-});
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
