@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../services/token_storage.dart';
+import '../services/onboarding_storage.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
+import 'onboarding_screen.dart'; // you'll add this next
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -14,53 +16,50 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _checkAuth();
+    _decideNext();
   }
 
-  Future<void> _checkAuth() async {
+  Future<void> _decideNext() async {
+    // Small delay if you want a splash effect
+    await Future.delayed(const Duration(milliseconds: 800));
+
     final token = await TokenStorage.getToken();
-
-    // Small delay so the splash shows briefly
-    await Future.delayed(const Duration(milliseconds: 500));
-
     if (!mounted) return;
 
-    if (token != null && token.isNotEmpty) {
-      // Token exists → go to Home
+    if (token == null) {
+      // Not logged in at all
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+      return;
+    }
+
+    // Logged in → check onboarding status
+    final hasOnboarded = await OnboardingStorage.hasCompleted();
+    if (!mounted) return;
+
+    if (hasOnboarded) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const HomeScreen()),
       );
     } else {
-      // No token → go to Login
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        // Purple gradient background like your Figma
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF7A33B6), // top purple
-              Color(0xFF3A1676), // bottom purple
-            ],
-          ),
-        ),
-        child: Center(
-          child: Image.asset(
-            'assets/images/muud_logo.png',
-            width: 180, // adjust to match design
-            fit: BoxFit.contain,
-          ),
+    // simple splash, you can keep your existing logo UI
+    return const Scaffold(
+      body: Center(
+        child: Text(
+          'MUUD Health',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
       ),
     );

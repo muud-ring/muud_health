@@ -42,6 +42,24 @@ const userSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
+
+    // NEW OPTIONAL PROFILE FIELDS
+    bio: {
+      type: String,
+      default: '',
+    },
+    location: {
+      type: String,
+      default: '',
+    },
+    mood: {
+      type: String,
+      default: '',
+    },
+    avatarUrl: {
+      type: String,
+      default: '',
+    },
   },
   { timestamps: true }
 );

@@ -3,7 +3,9 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/token_storage.dart';
+import '../services/onboarding_storage.dart';
 import 'home_screen.dart';
+import 'onboarding_screen.dart';
 
 // ---- COLORS (same style as login) ----
 const Color kPrimaryPurple = Color(0xFF5B288E);
@@ -66,6 +68,7 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
+  // ---------------- HANDLE SIGNUP ----------------
   Future<void> _handleSignup() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -106,10 +109,12 @@ class _SignupScreenState extends State<SignupScreen> {
         final token = result['token'] as String;
 
         await TokenStorage.saveToken(token);
+        await OnboardingStorage.setCompleted(false); // ensure onboarding needed
 
+        // 🔀 go to ONBOARDING instead of Home
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
           (route) => false,
         );
       } else {
@@ -360,6 +365,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           width: 1,
                         ),
                       ),
+                      // ✅ FIXED: OutlineInputBorder (not OutlineInputBoundary)
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                         borderSide: const BorderSide(
@@ -405,7 +411,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
                   const SizedBox(height: 16),
 
-                  // ---- Date of birth label + info icon ----
+                  // ---- DOB LABEL ----
                   Row(
                     children: const [
                       Text(
@@ -422,7 +428,7 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                   const SizedBox(height: 8),
 
-                  // ---- DOB field ----
+                  // ---- DOB FIELD ----
                   TextFormField(
                     controller: _dobController,
                     readOnly: true,
@@ -443,6 +449,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           width: 1,
                         ),
                       ),
+                      // ✅ FIXED: OutlineInputBorder (not OutlineInputBoundary)
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                         borderSide: const BorderSide(
@@ -467,7 +474,6 @@ class _SignupScreenState extends State<SignupScreen> {
 
                   const SizedBox(height: 16),
 
-                  // ---- INFO TEXTS ----
                   const Text(
                     'People who use our service may have uploaded your contact information to MUUD. Learn More',
                     style: TextStyle(

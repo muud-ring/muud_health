@@ -1,5 +1,5 @@
 // middleware/authMiddleware.js
-const jwt = require('jsonwebtoken');
+const jwt = require('jsonwebtoken');   // 👈 This line is critical
 
 module.exports = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -13,7 +13,8 @@ module.exports = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // { id: <userId>, iat, exp }
+    // decoded should look like: { id: <userId>, iat, exp }
+    req.user = decoded;
     next();
   } catch (error) {
     console.error('Token verification error:', error.message);

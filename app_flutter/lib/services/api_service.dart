@@ -2,6 +2,7 @@
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../models/user_profile.dart'; // 👈 NEW
 
 class ApiService {
   // Make sure this URL matches where your backend is running.
@@ -122,6 +123,86 @@ class ApiService {
             data['message'] ??
             'Failed to load protected data (code ${response.statusCode}).',
       };
+    }
+  }
+
+  // ---------- PROFILE ----------
+  static Future<UserProfile?> getMyProfile(String token) async {
+    final url = Uri.parse('$baseUrl/api/profile/me');
+
+    final response = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    print('PROFILE GET status: ${response.statusCode}');
+    print('PROFILE GET body: ${response.body}');
+
+    final data = _safeJsonDecode(response.body);
+
+    if (response.statusCode == 200 && data['user'] != null) {
+      return UserProfile.fromJson(data['user']);
+    } else {
+      return null;
+    }
+  }
+
+  static Future<UserProfile?> updateMyProfile(
+    String token,
+    UserProfile profile,
+  ) async {
+    final url = Uri.parse('$baseUrl/api/profile/me');
+
+    final response = await http.patch(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(profile.toUpdateJson()),
+    );
+
+    print('PROFILE PATCH status: ${response.statusCode}');
+    print('PROFILE PATCH body: ${response.body}');
+
+    final data = _safeJsonDecode(response.body);
+
+    if (response.statusCode == 200 && data['user'] != null) {
+      return UserProfile.fromJson(data['user']);
+    } else {
+      return null;
+    }
+  }
+
+  // ---------- TRENDS DASHBOARD ----------
+  static Future<Map<String, dynamic>?> getTrendsDashboard(String token) async {
+    final url = Uri.parse('$baseUrl/api/trends/dashboard');
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      // For debugging:
+      print('TRENDS status: ${response.statusCode}');
+      print('TRENDS body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        return _safeJsonDecode(response.body);
+      } else {
+        // You can also parse an error message here if you want
+        return null;
+      }
+    } catch (e) {
+      print('Error in getTrendsDashboard: $e');
+      return null;
     }
   }
 }
