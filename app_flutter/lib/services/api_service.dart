@@ -6,7 +6,8 @@ import '../models/user_profile.dart'; // 👈 NEW
 
 class ApiService {
   // Make sure this URL matches where your backend is running.
-  static const String baseUrl = 'http://localhost:4000';
+  // Render backend:
+  static const String baseUrl = 'https://muud-health.onrender.com';
 
   // Helper to safely decode JSON
   static Map<String, dynamic> _safeJsonDecode(String body) {
