@@ -37,13 +37,11 @@ const userSchema = new mongoose.Schema(
       minlength: 8,
     },
 
-    // NEW: Date of birth
     dateOfBirth: {
       type: Date,
       required: true,
     },
 
-    // NEW OPTIONAL PROFILE FIELDS
     bio: {
       type: String,
       default: '',
@@ -64,7 +62,7 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Hash password before saving
+// Hash password before saving, ONLY here
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
 
@@ -73,7 +71,6 @@ userSchema.pre('save', async function (next) {
   next();
 });
 
-// Compare password for login
 userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };

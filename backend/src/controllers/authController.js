@@ -18,12 +18,10 @@ const registerUser = async (req, res) => {
   try {
     const { mobileOrEmail, fullName, username, password, dateOfBirth } = req.body;
 
-    // Required fields
     if (!mobileOrEmail || !fullName || !username || !password || !dateOfBirth) {
       return res.status(400).json({ message: 'Please fill in all fields.' });
     }
 
-    // Password validation
     const passwordRegex = /^(?=.*\d)(?=.*[!@#$%^&*?])[A-Za-z\d!@#$%^&*?]{8,}$/;
 
     if (!passwordRegex.test(password)) {
@@ -33,21 +31,17 @@ const registerUser = async (req, res) => {
       });
     }
 
-    // Parse date
     const dobDate = new Date(dateOfBirth);
     if (isNaN(dobDate.getTime())) {
       return res.status(400).json({ message: 'Invalid date of birth.' });
     }
 
-    // Check username uniqueness
-    const existingUsername = await User.findOne({ username: username.trim() });
+    const cleanUsername = username.trim();
+    const existingUsername = await User.findOne({ username: cleanUsername });
     if (existingUsername) {
       return res.status(400).json({ message: 'Username already taken.' });
     }
 
-    // -----------------------------------------
-    // Decide if user typed email or phone
-    // -----------------------------------------
     let email = null;
     let phone = null;
 
@@ -55,40 +49,29 @@ const registerUser = async (req, res) => {
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (emailPattern.test(trimmed)) {
-      // treat as email
       email = trimmed.toLowerCase();
-
       const existingEmail = await User.findOne({ email });
       if (existingEmail) {
         return res.status(400).json({ message: 'Email already in use.' });
       }
     } else {
-      // treat as phone
       phone = trimmed;
-
       const existingPhone = await User.findOne({ phone });
       if (existingPhone) {
         return res.status(400).json({ message: 'Phone already in use.' });
       }
     }
 
-    // -----------------------------------------
-    // Hash password
-    // -----------------------------------------
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // -----------------------------------------
-    // Build user data WITHOUT nulls
-    // -----------------------------------------
+    // 🚨 No manual bcrypt here – plain password goes in
     const userData = {
       fullName,
-      username: username.trim(),
-      password: hashedPassword,
+      username: cleanUsername,
+      password,            // plain; gets hashed in pre-save hook
       dateOfBirth: dobDate,
     };
 
-    if (email) userData.email = email;   // only set if not null
-    if (phone) userData.phone = phone;   // only set if not null
+    if (email) userData.email = email;
+    if (phone) userData.phone = phone;
 
     const user = await User.create(userData);
 
@@ -118,36 +101,37 @@ const registerUser = async (req, res) => {
   }
 };
 
-// @desc    Login user with email OR phone
+// @desc    Login user with email OR phone OR username
 // @route   POST /api/auth/login
 // @access  Public
 const loginUser = async (req, res) => {
   try {
-    const { identifier, password } = req.body; // identifier = email OR phone
+    const { identifier, password } = req.body; // identifier = email / phone / username
 
     if (!identifier || !password) {
       return res
         .status(400)
-        .json({ message: 'Please provide email/phone and password.' });
+        .json({ message: 'Please provide email/phone/username and password.' });
     }
 
     const trimmed = identifier.trim();
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const lower = trimmed.toLowerCase();
 
-    let user;
-
-    if (emailPattern.test(trimmed)) {
-      user = await User.findOne({ email: trimmed.toLowerCase() });
-    } else {
-      user = await User.findOne({ phone: trimmed });
-    }
+    const user = await User.findOne({
+      $or: [
+        { email: lower },
+        { phone: trimmed },
+        { username: trimmed },
+      ],
+    });
 
     if (!user) {
+      console.log('LOGIN: no user for identifier', identifier);
       return res.status(400).json({ message: 'Invalid credentials.' });
     }
 
-    // Compare password using bcrypt
     const isMatch = await bcrypt.compare(password, user.password);
+    console.log('LOGIN: password match?', isMatch);
 
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid credentials.' });
