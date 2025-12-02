@@ -66,6 +66,15 @@ flutter:
     - assets/images/facebook.png
 
     - assets/images/onboarding/muud_health_intro.png
+    - assets/images/onboarding/onboarding_welcome.png
+    - assets/images/onboarding/onboarding_welcome01.png
+    - assets/images/onboarding/notifications.png
+    - assets/images/onboarding/01Screen05.png
+    - assets/images/onboarding/02Screen05.png
+    - assets/images/onboarding/03Screen05.png
+
+    - assets/images/people/diversity_2.png
+    - assets/images/people/group_add.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:

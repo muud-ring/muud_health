@@ -9,6 +9,9 @@ import 'package:app_flutter/screens/trends/trends_screen.dart';
 import 'edit_profile_screen.dart';
 import 'package:app_flutter/widgets/home/profile_card.dart';
 
+// 👉 ADD THIS IMPORT FOR PEOPLE SCREEN
+import 'package:app_flutter/screens/people_screen.dart';
+
 const Color kPrimaryPurple = Color(0xFF5B288E);
 
 class HomeScreen extends StatefulWidget {
@@ -101,14 +104,20 @@ class _HomeScreenState extends State<HomeScreen> {
             Expanded(child: HomeTab(fullName: fullName)),
           ],
         );
+
       case 1:
         return const TrendsScreen();
+
       case 2:
         return const Center(child: Text('New Entry (+)'));
+
       case 3:
-        return const Center(child: Text('People tab (coming soon)'));
+        // 👉 REPLACED PLACEHOLDER WITH PEOPLE SCREEN
+        return const PeopleScreen();
+
       case 4:
         return const Center(child: Text('Explore tab (coming soon)'));
+
       default:
         return HomeTab(fullName: fullName);
     }
@@ -123,7 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case 2:
         return "New Entry";
       case 3:
-        return "People";
+        return "People"; // 👈 Updated title
       case 4:
         return "Explore";
       default:

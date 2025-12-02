@@ -3,7 +3,7 @@ import '../services/token_storage.dart';
 import '../services/onboarding_storage.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
-import 'onboarding_screen.dart'; // you'll add this next
+import 'onboarding/onboarding_flow_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -47,7 +47,7 @@ class _SplashScreenState extends State<SplashScreen> {
     } else {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+        MaterialPageRoute(builder: (_) => const OnboardingFlowScreen()),
       );
     }
   }

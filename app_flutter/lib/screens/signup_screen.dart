@@ -5,7 +5,7 @@ import '../services/api_service.dart';
 import '../services/token_storage.dart';
 import '../services/onboarding_storage.dart';
 import 'home_screen.dart';
-import 'onboarding_screen.dart';
+import 'onboarding/onboarding_flow_screen.dart';
 
 // ---- COLORS (same style as login) ----
 const Color kPrimaryPurple = Color(0xFF5B288E);
@@ -114,7 +114,7 @@ class _SignupScreenState extends State<SignupScreen> {
         // 🔀 go to ONBOARDING instead of Home
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+          MaterialPageRoute(builder: (_) => const OnboardingFlowScreen()),
           (route) => false,
         );
       } else {
