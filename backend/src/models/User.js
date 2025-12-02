@@ -42,6 +42,17 @@ const userSchema = new mongoose.Schema(
       required: true,
     },
 
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    verificationOtp: {
+      type: String,
+    },
+    verificationOtpExpiresAt: {
+      type: Date,
+    },
+
     bio: {
       type: String,
       default: '',
@@ -57,6 +68,85 @@ const userSchema = new mongoose.Schema(
     avatarUrl: {
       type: String,
       default: '',
+    },
+
+    // 🔹 Nested onboarding object (single source of truth)
+    onboarding: {
+      // Screen: "Is there anything specific you’d like to focus on?"
+      focus: {
+        type: String,
+        enum: [
+          'Improve mood',
+          'Increase focus and productivity',
+          'Self-improvement',
+          'Reduce stress or anxiety',
+          'Other',
+        ],
+        default: null,
+      },
+
+      // Screen: "Pick your favorite color"
+      favoriteColor: {
+        type: String, // e.g. "#9A29CF"
+        default: null,
+      },
+
+      // Screen: "Do you have any preferred types of activities?"
+      activities: [
+        {
+          type: String,
+          enum: [
+            'Meditation',
+            'Exercise',
+            'Reading',
+            'Cooking',
+            'Social',
+            'Pet care',
+          ],
+        },
+      ],
+
+      // Screen: "MUUD wants to send you notifications"
+      notificationsEnabled: {
+        type: Boolean, // true = allow, false = no thanks
+        default: null,
+      },
+
+      // Screen 6: "Here’s how MUUD Health can support you"
+      // We store keys like: "navigate_emotions", "uncover_patterns", "wellness_sessions"
+      supportOptions: [
+        {
+          type: String,
+        },
+      ],
+
+      // Screen 7: first MUUD check-in
+      // Flutter sends: "happy","fear","dislike","sadness","angry","surprised"
+      initialMood: {
+        type: String,
+        enum: ['happy', 'fear', 'dislike', 'sadness', 'angry', 'surprised'],
+        default: null,
+      },
+
+      // Screen 8: "Just a moment while we get MUUD ready for you…"
+      // Flutter sends: "customize_journal","prepare_sessions","create_optimal_plan"
+      preparingChoice: {
+        type: String,
+        enum: [
+          'customize_journal',
+          'prepare_sessions',
+          'create_optimal_plan',
+        ],
+        default: null,
+      },
+
+      completed: {
+        type: Boolean,
+        default: false,
+      },
+      completedAt: {
+        type: Date,
+      },
     },
   },
   { timestamps: true }

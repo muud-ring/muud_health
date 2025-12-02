@@ -39,7 +39,6 @@ app.use('/api/auth', authRoute);
 app.use('/api/health', healthRoute);
 
 app.use('/api/profile', profileRoute);
-
 app.use('/api/trends', trendRoutes);
 
 // Catch-all for unknown routes
