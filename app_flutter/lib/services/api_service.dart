@@ -2,14 +2,14 @@
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../models/user_profile.dart'; // 👈 NEW
+import '../models/user_profile.dart';
 
 class ApiService {
-  // Make sure this URL matches where your backend is running.
-  // Render backend:
-  static const String baseUrl = 'http://localhost:4000'; // your local backend
+  // 🔗 Your Render backend URL (no trailing slash)
+  static const String baseUrl = 'https://muud-health.onrender.com';
+  // e.g. 'https://muud-backend.onrender.com'
 
-  // Helper to safely decode JSON
+  // ---------- Helper to safely decode JSON ----------
   static Map<String, dynamic> _safeJsonDecode(String body) {
     if (body.isEmpty) return {};
     try {
@@ -127,7 +127,7 @@ class ApiService {
     }
   }
 
-  // ---------- PROFILE ----------
+  // ---------- PROFILE: GET ----------
   static Future<UserProfile?> getMyProfile(String token) async {
     final url = Uri.parse('$baseUrl/api/profile/me');
 
@@ -151,6 +151,7 @@ class ApiService {
     }
   }
 
+  // ---------- PROFILE: UPDATE ----------
   static Future<UserProfile?> updateMyProfile(
     String token,
     UserProfile profile,
@@ -191,14 +192,12 @@ class ApiService {
         },
       );
 
-      // For debugging:
       print('TRENDS status: ${response.statusCode}');
       print('TRENDS body: ${response.body}');
 
       if (response.statusCode == 200) {
         return _safeJsonDecode(response.body);
       } else {
-        // You can also parse an error message here if you want
         return null;
       }
     } catch (e) {
