@@ -9,8 +9,15 @@ import 'package:app_flutter/screens/trends/trends_screen.dart';
 import 'edit_profile_screen.dart';
 import 'package:app_flutter/widgets/home/profile_card.dart';
 
-// 👉 ADD THIS IMPORT FOR PEOPLE SCREEN
+// 👉 People screen
 import 'package:app_flutter/screens/people_screen.dart';
+
+// 👉 Journal frontend draft + backend models
+import 'package:app_flutter/screens/journal/journal_creator_entry_screen.dart';
+import 'package:app_flutter/models/journal/journal_draft.dart';
+import 'package:app_flutter/models/journal/journal_entry.dart';
+import 'package:app_flutter/widgets/home/journal_preview_card.dart';
+import 'package:app_flutter/widgets/home/journal_entry_card.dart';
 
 const Color kPrimaryPurple = Color(0xFF5B288E);
 
@@ -28,13 +35,19 @@ class _HomeScreenState extends State<HomeScreen> {
   UserProfile? _profile;
   String? _authToken;
 
+  // Last created journal (local-only, used for immediate preview with imagePath)
+  JournalDraft? _lastJournalDraft;
+
+  // Journals from backend
+  List<JournalEntry> _journals = [];
+
   @override
   void initState() {
     super.initState();
-    _loadProtectedAndProfile();
+    _loadProtectedProfileAndJournals();
   }
 
-  Future<void> _loadProtectedAndProfile() async {
+  Future<void> _loadProtectedProfileAndJournals() async {
     final token = await TokenStorage.getToken();
 
     if (token == null) {
@@ -48,17 +61,37 @@ class _HomeScreenState extends State<HomeScreen> {
 
     _authToken = token;
 
-    await ApiService.getProtectedData(token);
-    final profile = await ApiService.getMyProfile(token);
+    try {
+      await ApiService.getProtectedData(token);
+      final profile = await ApiService.getMyProfile(token);
+      final journals = await ApiService.getMyJournals(token);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    setState(() {
-      _profile = profile;
-      if (profile != null && profile.fullName.isNotEmpty) {
-        fullName = profile.fullName;
-      }
-    });
+      setState(() {
+        _profile = profile;
+        if (profile != null && profile.fullName.isNotEmpty) {
+          fullName = profile.fullName;
+        }
+        _journals = journals;
+      });
+    } catch (e) {
+      print('Error loading profile/journals: $e');
+    }
+  }
+
+  Future<void> _refreshJournals() async {
+    if (_authToken == null) return;
+
+    try {
+      final journals = await ApiService.getMyJournals(_authToken!);
+      if (!mounted) return;
+      setState(() {
+        _journals = journals;
+      });
+    } catch (e) {
+      print('Error refreshing journals: $e');
+    }
   }
 
   Future<void> _logout() async {
@@ -101,6 +134,17 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             ProfileCard(profile: _profile!, onEdit: _openEditProfile),
             const SizedBox(height: 16),
+
+            // 👉 Prefer backend journal if available
+            if (_journals.isNotEmpty) ...[
+              JournalEntryCard(entry: _journals.first),
+              const SizedBox(height: 16),
+            ] else if (_lastJournalDraft != null) ...[
+              // Fallback: show local draft (with real imagePath)
+              JournalPreviewCard(draft: _lastJournalDraft!),
+              const SizedBox(height: 16),
+            ],
+
             Expanded(child: HomeTab(fullName: fullName)),
           ],
         );
@@ -109,10 +153,10 @@ class _HomeScreenState extends State<HomeScreen> {
         return const TrendsScreen();
 
       case 2:
+        // Center + tab is not used anymore, but we keep placeholder
         return const Center(child: Text('New Entry (+)'));
 
       case 3:
-        // 👉 REPLACED PLACEHOLDER WITH PEOPLE SCREEN
         return const PeopleScreen();
 
       case 4:
@@ -132,7 +176,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case 2:
         return "New Entry";
       case 3:
-        return "People"; // 👈 Updated title
+        return "People";
       case 4:
         return "Explore";
       default:
@@ -241,8 +285,31 @@ class _HomeScreenState extends State<HomeScreen> {
               isSelected: _currentIndex == 1,
               onTap: () => setState(() => _currentIndex = 1),
             ),
+
+            // 👉 Center + button opens Journal Creator and awaits result
             GestureDetector(
-              onTap: () => setState(() => _currentIndex = 2),
+              onTap: () async {
+                final draft = await Navigator.push<JournalDraft>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const JournalCreatorEntryScreen(),
+                  ),
+                );
+
+                if (draft != null && mounted) {
+                  setState(() {
+                    _lastJournalDraft = draft;
+                    _currentIndex = 0; // ensure we’re on Home tab
+                  });
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Journal saved.')),
+                  );
+
+                  // Also refresh from backend so card reflects real data
+                  _refreshJournals();
+                }
+              },
               child: Container(
                 width: 56,
                 height: 56,
@@ -253,6 +320,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: const Icon(Icons.add, color: Colors.white, size: 30),
               ),
             ),
+
             _BottomNavItem(
               icon: Icons.people_alt_outlined,
               label: 'People',

@@ -3,11 +3,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/user_profile.dart';
+import 'package:app_flutter/models/journal/journal_entry.dart';
 
 class ApiService {
   // 🔗 Your Render backend URL (no trailing slash)
   static const String baseUrl = 'https://muud-health.onrender.com';
-  // e.g. 'https://muud-backend.onrender.com'
 
   // ---------- Helper to safely decode JSON ----------
   static Map<String, dynamic> _safeJsonDecode(String body) {
@@ -20,7 +20,6 @@ class ApiService {
         return {};
       }
     } on FormatException catch (e) {
-      // For debugging – this goes to your Flutter console
       print('JSON decode error: $e');
       print('Raw body: $body');
       return {};
@@ -37,10 +36,7 @@ class ApiService {
     final response = await http.post(
       url,
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'identifier': identifier, // email OR phone
-        'password': password,
-      }),
+      body: jsonEncode({'identifier': identifier, 'password': password}),
     );
 
     print('LOGIN status: ${response.statusCode}');
@@ -86,7 +82,6 @@ class ApiService {
 
     final data = _safeJsonDecode(response.body);
 
-    // ✅ Accept both 201 (Created) and 200 (OK) as success
     if (response.statusCode == 201 || response.statusCode == 200) {
       return {'success': true, 'token': data['token'], 'data': data};
     } else {
@@ -203,6 +198,101 @@ class ApiService {
     } catch (e) {
       print('Error in getTrendsDashboard: $e');
       return null;
+    }
+  }
+
+  // ---------- JOURNAL: CREATE ----------
+  static Future<JournalEntry?> createJournal({
+    required String token,
+    required String caption,
+    required String visibility,
+    String? imageUrl,
+    String? emoji,
+  }) async {
+    final url = Uri.parse('$baseUrl/api/journals');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'caption': caption,
+          'visibility': visibility,
+          'imageUrl': imageUrl ?? '',
+          'emoji': emoji ?? '',
+        }),
+      );
+
+      print('CREATE JOURNAL status: ${response.statusCode}');
+      print('CREATE JOURNAL body: ${response.body}');
+
+      if (response.statusCode == 201) {
+        final data = _safeJsonDecode(response.body);
+        return JournalEntry.fromJson(data);
+      } else {
+        print(
+          'createJournal error: status=${response.statusCode}, body=${response.body}',
+        );
+        return null;
+      }
+    } catch (e) {
+      print('createJournal exception: $e');
+      return null;
+    }
+  }
+
+  // ---------- JOURNAL: GET MY JOURNALS ----------
+  static Future<List<JournalEntry>> getMyJournals(String token) async {
+    final url = Uri.parse('$baseUrl/api/journals/me');
+
+    try {
+      final response = await http.get(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      print('GET MY JOURNALS status: ${response.statusCode}');
+      print('GET MY JOURNALS body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+
+        // Case 1: backend returns array
+        if (decoded is List) {
+          return decoded
+              .whereType<Map<String, dynamic>>()
+              .map((e) => JournalEntry.fromJson(e))
+              .toList();
+        }
+
+        // Case 2: backend returns object { journals: [] }
+        if (decoded is Map<String, dynamic>) {
+          final list = decoded['journals'];
+          if (list is List) {
+            return list
+                .whereType<Map<String, dynamic>>()
+                .map((e) => JournalEntry.fromJson(e))
+                .toList();
+          }
+        }
+
+        print('getMyJournals: unexpected JSON shape');
+        return [];
+      } else {
+        print(
+          'getMyJournals error: status=${response.statusCode}, body=${response.body}',
+        );
+        return [];
+      }
+    } catch (e) {
+      print('getMyJournals exception: $e');
+      return [];
     }
   }
 }

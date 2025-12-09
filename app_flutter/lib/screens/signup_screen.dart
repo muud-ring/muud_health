@@ -70,6 +70,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
   // ---------------- HANDLE SIGNUP ----------------
   Future<void> _handleSignup() async {
+    // 1. Validate form
     if (!_formKey.currentState!.validate()) return;
 
     if (_selectedDob == null) {
@@ -78,6 +79,8 @@ class _SignupScreenState extends State<SignupScreen> {
       });
       return;
     }
+
+    debugPrint('🔁 _handleSignup START');
 
     setState(() {
       _isLoading = true;
@@ -91,6 +94,8 @@ class _SignupScreenState extends State<SignupScreen> {
     final dobIsoString = _selectedDob!.toIso8601String();
 
     try {
+      // 2. Call backend
+      debugPrint('➡️ Calling ApiService.signupUser...');
       final result = await ApiService.signupUser(
         mobileOrEmail: mobileOrEmail,
         fullName: fullName,
@@ -98,20 +103,20 @@ class _SignupScreenState extends State<SignupScreen> {
         password: password,
         dateOfBirth: dobIsoString,
       );
+      debugPrint('✅ signupUser finished, result: $result');
 
       if (!mounted) return;
 
-      setState(() {
-        _isLoading = false;
-      });
-
       if (result['success'] == true) {
         final token = result['token'] as String;
+        debugPrint('💾 Saving token + onboarding flag');
 
         await TokenStorage.saveToken(token);
-        await OnboardingStorage.setCompleted(false); // ensure onboarding needed
+        await OnboardingStorage.setCompleted(false); // force onboarding
 
-        // 🔀 go to ONBOARDING instead of Home
+        if (!mounted) return;
+
+        debugPrint('➡️ Navigating to OnboardingFlowScreen');
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => const OnboardingFlowScreen()),
@@ -123,13 +128,21 @@ class _SignupScreenState extends State<SignupScreen> {
               result['message'] as String? ??
               'Signup failed. Please try again.';
         });
+        debugPrint('❌ Signup failed: $_errorMessage');
       }
-    } catch (e) {
+    } catch (e, st) {
       if (!mounted) return;
+      debugPrint('🔥 _handleSignup exception: $e');
+      debugPrint('Stack: $st');
+
       setState(() {
-        _isLoading = false;
         _errorMessage = 'Unexpected error: $e';
       });
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        debugPrint('🔁 _handleSignup END (loading=false)');
+      }
     }
   }
 
@@ -365,7 +378,6 @@ class _SignupScreenState extends State<SignupScreen> {
                           width: 1,
                         ),
                       ),
-                      // ✅ FIXED: OutlineInputBorder (not OutlineInputBoundary)
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                         borderSide: const BorderSide(
@@ -449,7 +461,6 @@ class _SignupScreenState extends State<SignupScreen> {
                           width: 1,
                         ),
                       ),
-                      // ✅ FIXED: OutlineInputBorder (not OutlineInputBoundary)
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                         borderSide: const BorderSide(
