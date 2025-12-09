@@ -9,6 +9,7 @@ const authRoute = require('./routes/authRoute');
 const healthRoute = require('./routes/healthRoute');
 const profileRoute = require('./routes/profileRoute');
 const trendRoutes = require('./routes/trendRoute');
+const journalRoutes = require('./routes/journalRoute');
 
 dotenv.config();
 connectDB();
@@ -40,6 +41,8 @@ app.use('/api/health', healthRoute);
 
 app.use('/api/profile', profileRoute);
 app.use('/api/trends', trendRoutes);
+
+app.use('/api/journals', journalRoutes);
 
 // Catch-all for unknown routes
 app.use((req, res, next) => {
