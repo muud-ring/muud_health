@@ -137,11 +137,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
             // 👉 Prefer backend journal if available
             if (_journals.isNotEmpty) ...[
-              JournalEntryCard(entry: _journals.first),
-              const SizedBox(height: 16),
-            ] else if (_lastJournalDraft != null) ...[
-              // Fallback: show local draft (with real imagePath)
-              JournalPreviewCard(draft: _lastJournalDraft!),
+              // Show a vertical list of all journals
+              Column(
+                children: _journals
+                    .map(
+                      (entry) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: JournalEntryCard(entry: entry),
+                      ),
+                    )
+                    .toList(),
+              ),
               const SizedBox(height: 16),
             ],
 
