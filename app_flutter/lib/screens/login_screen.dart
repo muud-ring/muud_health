@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../services/api_service.dart';
 import '../services/token_storage.dart';
-import 'home_screen.dart';
+import '../services/user_storage.dart';
+import 'splash_screen.dart';
 import 'signup_screen.dart';
 
 // ---------- COLORS FROM FIGMA ----------
@@ -25,6 +27,24 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _errorMessage;
   bool _obscurePassword = true;
 
+  // ---------- GOOGLE SIGN-IN (NEW 7.x API) ----------
+  // Make sure this matches your iOS client ID
+  static const String _googleClientId =
+      '745123377800-trlcdnr3ac8sh74s6ldb5re5uh0hf2fi.apps.googleusercontent.com';
+
+  bool _isGoogleLoading = false;
+  bool _googleInitialized = false;
+
+  Future<void> _ensureGoogleInitialized() async {
+    if (_googleInitialized) return;
+
+    final GoogleSignIn signIn = GoogleSignIn.instance;
+
+    await signIn.initialize(clientId: _googleClientId);
+
+    _googleInitialized = true;
+  }
+
   // ---------------- VALIDATION ----------------
   bool _validateInputs() {
     final id = _identifierController.text.trim();
@@ -40,7 +60,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return true;
   }
 
-  // ---------------- LOGIN LOGIC (unchanged) ----------------
+  // ---------------- NORMAL LOGIN LOGIC ----------------
   Future<void> _handleLogin() async {
     if (!_validateInputs()) return;
 
@@ -61,12 +81,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (result['success'] == true) {
         final token = result['token'] as String;
+        final user = result['user'];
 
         await TokenStorage.saveToken(token);
 
+        if (user != null && user['fullName'] != null) {
+          await UserStorage.saveFullName(user['fullName']);
+        }
+
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          MaterialPageRoute(builder: (_) => const SplashScreen()),
         );
       } else {
         setState(() {
@@ -79,6 +104,83 @@ class _LoginScreenState extends State<LoginScreen> {
         _isLoading = false;
         _errorMessage = 'Unexpected error: $e';
       });
+    }
+  }
+
+  // ---------------- GOOGLE LOGIN LOGIC (NEW API) ----------------
+  Future<void> _handleGoogleSignIn() async {
+    if (_isGoogleLoading) return;
+
+    setState(() {
+      _isGoogleLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      // 1) Initialize the singleton once
+      await _ensureGoogleInitialized();
+
+      final GoogleSignIn signIn = GoogleSignIn.instance;
+
+      if (!signIn.supportsAuthenticate()) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Google Sign-In not supported on this platform.'),
+          ),
+        );
+        setState(() => _isGoogleLoading = false);
+        return;
+      }
+
+      // 2) Start interactive auth flow
+      final GoogleSignInAccount user = await signIn.authenticate();
+
+      // 3) Get ID token
+      final GoogleSignInAuthentication googleAuth = user.authentication;
+      final String? idToken = googleAuth.idToken;
+
+      if (idToken == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Google login failed: No ID token')),
+        );
+        setState(() => _isGoogleLoading = false);
+        return;
+      }
+
+      // 4) Send ID token to backend
+      final result = await ApiService.googleLogin(idToken);
+
+      if (!mounted) return;
+
+      if (result['success'] == true) {
+        final token = result['token'] as String;
+        final userData = result['user'];
+
+        await TokenStorage.saveToken(token);
+
+        if (userData != null && userData['fullName'] != null) {
+          await UserStorage.saveFullName(userData['fullName']);
+        }
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const SplashScreen()),
+        );
+      } else {
+        setState(() {
+          _errorMessage =
+              result['message'] as String? ?? 'Google login failed.';
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Google Sign-In error: $e';
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isGoogleLoading = false);
+      }
     }
   }
 
@@ -230,7 +332,7 @@ class _LoginScreenState extends State<LoginScreen> {
               SizedBox(
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: _handleLogin,
+                  onPressed: _isLoading ? null : _handleLogin,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: kPrimaryPurple,
                     shape: RoundedRectangleBorder(
@@ -281,12 +383,17 @@ class _LoginScreenState extends State<LoginScreen> {
               // ---------- SOCIAL BUTTONS ----------
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  _SocialIconButton(assetPath: 'assets/images/google.png'),
-                  SizedBox(width: 16),
-                  _SocialIconButton(assetPath: 'assets/images/apple.png'),
-                  SizedBox(width: 16),
-                  _SocialIconButton(assetPath: 'assets/images/facebook.png'),
+                children: [
+                  _SocialIconButton(
+                    assetPath: 'assets/images/google.png',
+                    onTap: _isGoogleLoading ? null : _handleGoogleSignIn,
+                  ),
+                  const SizedBox(width: 16),
+                  const _SocialIconButton(assetPath: 'assets/images/apple.png'),
+                  const SizedBox(width: 16),
+                  const _SocialIconButton(
+                    assetPath: 'assets/images/facebook.png',
+                  ),
                 ],
               ),
 
@@ -349,13 +456,14 @@ class _LoginScreenState extends State<LoginScreen> {
 // ---------- SOCIAL ICON BUTTON ----------
 class _SocialIconButton extends StatelessWidget {
   final String assetPath;
+  final VoidCallback? onTap;
 
-  const _SocialIconButton({required this.assetPath});
+  const _SocialIconButton({required this.assetPath, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () {},
+      onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
         width: 56,

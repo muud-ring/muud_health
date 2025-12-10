@@ -7,7 +7,10 @@ import 'package:app_flutter/models/journal/journal_entry.dart';
 
 class ApiService {
   // 🔗 Your Render backend URL (no trailing slash)
-  static const String baseUrl = 'https://muud-health.onrender.com';
+  static const String baseUrl = 'http://localhost:4000';
+
+  // For production / Render
+  // static const String baseUrl = 'https://muud-health.onrender.com';
 
   // ---------- Helper to safely decode JSON ----------
   static Map<String, dynamic> _safeJsonDecode(String body) {
@@ -27,31 +30,33 @@ class ApiService {
   }
 
   // ---------- LOGIN ----------
+  // ---------- LOGIN (EMAIL OR PHONE) ----------
   static Future<Map<String, dynamic>> loginUser(
     String identifier,
     String password,
   ) async {
     final url = Uri.parse('$baseUrl/api/auth/login');
 
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'identifier': identifier, 'password': password}),
-    );
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"emailOrPhone": identifier, "password": password}),
+      );
 
-    print('LOGIN status: ${response.statusCode}');
-    print('LOGIN body: ${response.body}');
+      final body = _safeJsonDecode(response.body);
 
-    final data = _safeJsonDecode(response.body);
-
-    if (response.statusCode == 200) {
-      return {'success': true, 'token': data['token'], 'data': data};
-    } else {
-      return {
-        'success': false,
-        'message':
-            data['message'] ?? 'Login failed (code ${response.statusCode}).',
-      };
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'token': body['token'],
+          'user': body['user'], // 👈 now also returns user
+        };
+      } else {
+        return {'success': false, 'message': body['message'] ?? 'Login failed'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Network error'};
     }
   }
 
@@ -293,6 +298,32 @@ class ApiService {
     } catch (e) {
       print('getMyJournals exception: $e');
       return [];
+    }
+  }
+
+  // ---------- GOOGLE OAUTH LOGIN ----------
+  static Future<Map<String, dynamic>> googleLogin(String idToken) async {
+    final url = Uri.parse('$baseUrl/api/auth/oauth/google');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"idToken": idToken}),
+      );
+
+      final body = _safeJsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return {"success": true, "token": body["token"], "user": body["user"]};
+      } else {
+        return {
+          "success": false,
+          "message": body["message"] ?? "Google login failed",
+        };
+      }
+    } catch (e) {
+      return {"success": false, "message": "Network error"};
     }
   }
 }

@@ -8,6 +8,7 @@ import 'home_tab.dart';
 import 'package:app_flutter/screens/trends/trends_screen.dart';
 import 'edit_profile_screen.dart';
 import 'package:app_flutter/widgets/home/profile_card.dart';
+import '../services/user_storage.dart';
 
 // 👉 People screen
 import 'package:app_flutter/screens/people_screen.dart';
@@ -44,7 +45,20 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _loadUserName(); // 👈 load name from local storage (email/Google)
     _loadProtectedProfileAndJournals();
+  }
+
+  // 👇 NEW: load name saved at login (email or Google)
+  Future<void> _loadUserName() async {
+    final storedName = await UserStorage.getFullName();
+    if (!mounted) return;
+
+    if (storedName != null && storedName.trim().isNotEmpty) {
+      setState(() {
+        fullName = storedName.trim();
+      });
+    }
   }
 
   Future<void> _loadProtectedProfileAndJournals() async {
@@ -96,6 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _logout() async {
     await TokenStorage.removeToken();
+    await UserStorage.clear(); // 👈 clear stored name on logout
     if (!mounted) return;
 
     Navigator.pushAndRemoveUntil(
@@ -121,6 +136,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _profile = updated;
         fullName = updated.fullName;
       });
+      // also update stored name so future sessions show it
+      await UserStorage.saveFullName(updated.fullName);
     }
   }
 

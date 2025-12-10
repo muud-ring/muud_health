@@ -20,14 +20,14 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _decideNext() async {
-    // Small delay if you want a splash effect
+    // Small delay for splash effect
     await Future.delayed(const Duration(milliseconds: 800));
 
     final token = await TokenStorage.getToken();
     if (!mounted) return;
 
     if (token == null) {
-      // Not logged in at all
+      // Not logged in
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -54,12 +54,28 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // simple splash, you can keep your existing logo UI
-    return const Scaffold(
-      body: Center(
-        child: Text(
-          'MUUD Health',
-          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+    // ✅ Figma-style gradient + centered MUUD logo
+    return Scaffold(
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              // TODO: replace these with your exact Figma hex values
+              Color(0xFF9C4CE4), // lighter purple (top-left)
+              Color(0xFF4B1573), // darker purple (bottom-right)
+            ],
+          ),
+        ),
+        child: Center(
+          child: Image.asset(
+            'assets/logos/muud_logo.png',
+            width: 180, // tweak to match your Figma size
+            fit: BoxFit.contain,
+          ),
         ),
       ),
     );
