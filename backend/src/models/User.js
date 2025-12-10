@@ -39,8 +39,9 @@ const userSchema = new mongoose.Schema(
 
     dateOfBirth: {
       type: Date,
-      required: true,
+      // not required for OAuth users (we'll collect it in onboarding)
     },
+    
 
     isVerified: {
       type: Boolean,
@@ -148,6 +149,32 @@ const userSchema = new mongoose.Schema(
         type: Date,
       },
     },
+    // ⬇️ MODIFY your password field like this
+    password: {
+      type: String,
+      // required only if NOT using OAuth
+      required: function () {
+        return !this.oauthProvider; 
+      },
+      select: false, // if you already had this, keep it
+    },
+
+    // ⬇️ NEW FIELDS FOR OAUTH
+    oauthProvider: {
+      type: String,
+      enum: ['google', 'apple', 'facebook', null],
+      default: null,
+    }, // one-line: which provider the user used, or null
+
+    oauthProviderId: {
+      type: String,
+      default: null,
+    }, // one-line: the unique id we get from Google/Apple/Facebook
+
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    }, // one-line: true when provider confirms email is real
   },
   { timestamps: true }
 );

@@ -1,207 +1,175 @@
-// backend/src/controllers/authController.js
+// controllers/authController.js
 
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const { sendOtpEmail } = require('../utils/emailService'); // NEW
+const { OAuth2Client } = require('google-auth-library');
 
-// Generate JWT
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: '30d',
-  });
-};
+// GOOGLE OAUTH CLIENT
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-// @desc    Register a new user (Sign Up)
-// @route   POST /api/auth/signup
-// @access  Public
-const registerUser = async (req, res) => {
+// -----------------------------------------------------
+// Signup Controller
+// -----------------------------------------------------
+exports.signup = async (req, res) => {
   try {
-    const { mobileOrEmail, fullName, username, password, dateOfBirth } = req.body;
+    const { fullName, email, phone, password, dateOfBirth } = req.body;
 
-    // Required fields
-    if (!mobileOrEmail || !fullName || !username || !password || !dateOfBirth) {
-      return res.status(400).json({ message: 'Please fill in all fields.' });
+    let existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: 'Email already in use.' });
     }
 
-    // Password validation
-    const passwordRegex = /^(?=.*\d)(?=.*[!@#$%^&*?])[A-Za-z\d!@#$%^&*?]{8,}$/;
+    const hashed = await bcrypt.hash(password, 10);
 
-    if (!passwordRegex.test(password)) {
-      return res.status(400).json({
-        message:
-          'Password must be at least 8 characters long and include at least 1 number and 1 special character.',
-      });
-    }
-
-    // Parse date
-    const dobDate = new Date(dateOfBirth);
-    if (isNaN(dobDate.getTime())) {
-      return res.status(400).json({ message: 'Invalid date of birth.' });
-    }
-
-    // Check username uniqueness (case-sensitive right now)
-    const cleanUsername = username.trim();
-    const existingUsername = await User.findOne({ username: cleanUsername });
-    if (existingUsername) {
-      return res.status(400).json({ message: 'Username already taken.' });
-    }
-
-    // -----------------------------------------
-    // Decide if user typed email or phone
-    // -----------------------------------------
-    let email = null;
-    let phone = null;
-
-    const trimmed = mobileOrEmail.trim();
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (emailPattern.test(trimmed)) {
-      // treat as email
-      email = trimmed.toLowerCase();
-
-      const existingEmail = await User.findOne({ email });
-      if (existingEmail) {
-        return res.status(400).json({ message: 'Email already in use.' });
-      }
-    } else {
-      // treat as phone
-      phone = trimmed;
-
-      const existingPhone = await User.findOne({ phone });
-      if (existingPhone) {
-        return res.status(400).json({ message: 'Phone already in use.' });
-      }
-    }
-
-    // -----------------------------------------
-    // Build user data WITHOUT manual hashing
-    // (pre-save hook in User.js will hash once)
-    // -----------------------------------------
-    const userData = {
+    const user = new User({
       fullName,
-      username: cleanUsername,
-      password,            // plain text; schema hook will hash this
-      dateOfBirth: dobDate,
-    };
+      email,
+      phone,
+      password: hashed,
+      dateOfBirth,
+    });
 
-    if (email) userData.email = email;
-    if (phone) userData.phone = phone;
+    await user.save();
 
-    let user = await User.create(userData);
-
-    // -----------------------------------------
-    // Generate and send verification OTP (email only for now)
-    // -----------------------------------------
-    if (email) {
-      const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit
-
-      user.verificationOtp = otp;
-      user.verificationOtpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
-      // don't re-run validators here, we only update OTP fields
-      await user.save({ validateBeforeSave: false });
-
-      try {
-        await sendOtpEmail(user.email, otp);
-        console.log(`Sent OTP ${otp} to ${user.email}`);
-      } catch (err) {
-        console.error('Error sending OTP email:', err);
-        // we don't fail signup just because email failed
-      }
-    }
-
-    return res.status(201).json({
-      success: true,
-      token: generateToken(user._id),
-      otpSent: !!email,                           // NEW
-      verificationChannel: email ? 'email' : 'phone', // NEW (for future SMS)
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+      expiresIn: '7d',
+    });
+    
+    res.json({
+      token,
       user: {
-        _id: user._id,
+        id: user._id,
         fullName: user.fullName,
-        username: user.username,
         email: user.email,
-        phone: user.phone,
-        dateOfBirth: user.dateOfBirth,
-        isVerified: user.isVerified,             // NEW (from model)
       },
     });
-  } catch (error) {
-    console.error('Error in registerUser:', error);
-
-    if (error.code === 11000) {
-      const field = Object.keys(error.keyValue)[0];
-      return res.status(400).json({
-        message: `${field.charAt(0).toUpperCase() + field.slice(1)} already in use.`,
-      });
-    }
-
-    return res.status(500).json({ message: 'Server error.' });
+    
+  } catch (err) {
+    console.error('Signup Error:', err);
+    res.status(500).json({ message: 'Signup failed.' });
   }
 };
 
-// @desc    Login user with email OR phone OR username
-// @route   POST /api/auth/login
-// @access  Public
-const loginUser = async (req, res) => {
+// -----------------------------------------------------
+// Login Controller
+// -----------------------------------------------------
+exports.login = async (req, res) => {
   try {
-    const { identifier, password } = req.body; // identifier = email / phone / username
+    const { emailOrPhone, password } = req.body;
 
-    if (!identifier || !password) {
-      return res
-        .status(400)
-        .json({ message: 'Please provide email/phone/username and password.' });
+    const user = await User.findOne({
+      $or: [{ email: emailOrPhone }, { phone: emailOrPhone }],
+    }).select('+password');
+
+    if (!user) {
+      return res.status(400).json({ message: 'User not found.' });
     }
 
-    const trimmed = identifier.trim();
-    const lower = trimmed.toLowerCase();
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) {
+      return res.status(400).json({ message: 'Invalid password.' });
+    }
 
-    // We allow login by:
-    // - email (case-insensitive)
-    // - phone
-    // - username
-    const user = await User.findOne({
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+      expiresIn: '7d',
+    });
+
+    res.json({ token });
+  } catch (err) {
+    console.error('Login Error:', err);
+    res.status(500).json({ message: 'Login failed.' });
+  }
+};
+
+// -----------------------------------------------------
+// Get Profile
+// -----------------------------------------------------
+exports.getProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+
+    if (!user) return res.status(404).json({ message: 'User not found.' });
+
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ message: 'Error fetching profile.' });
+  }
+};
+
+// -----------------------------------------------------
+// GOOGLE OAUTH LOGIN
+// -----------------------------------------------------
+// ---------- GOOGLE OAUTH LOGIN ----------
+exports.oauthGoogle = async (req, res) => {
+  try {
+    const { idToken } = req.body;
+
+    if (!idToken) {
+      return res.status(400).json({ message: 'idToken is required' });
+    }
+
+    // 1) Verify token with Google
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const googleUserId = payload.sub; // Google’s unique user id
+    const email = payload.email;
+    const fullName = payload.name || 'Google User';
+
+    // Build a default username from email (before @)
+    let generatedUsername = '';
+    if (email) {
+      generatedUsername = email.split('@')[0];
+    } else {
+      generatedUsername = `google_${googleUserId.slice(0, 6)}`;
+    }
+
+    // 2) Find existing user (by provider id or email)
+    let user = await User.findOne({
       $or: [
-        { email: lower },
-        { phone: trimmed },
-        { username: trimmed },
+        { oauthProvider: 'google', oauthProviderId: googleUserId },
+        { email },
       ],
     });
 
+    // 3) If no user, create one
     if (!user) {
-      console.log('LOGIN: no user for identifier', identifier);
-      return res.status(400).json({ message: 'Invalid credentials.' });
+      user = new User({
+        fullName,
+        email,
+        username: generatedUsername,   // <--- set username for schema
+        oauthProvider: 'google',
+        oauthProviderId: googleUserId,
+        emailVerified: true,
+        // dateOfBirth is optional; will be filled via onboarding
+      });
+
+      await user.save();
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    console.log('LOGIN: password match?', isMatch);
+    // 4) Create JWT just like normal login
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
 
-    if (!isMatch) {
-      return res.status(400).json({ message: 'Invalid credentials.' });
-    }
-
-    // (Later we can enforce isVerified here if you want)
-    // if (!user.isVerified) { ... }
-
-    return res.json({
-      success: true,
-      token: generateToken(user._id),
+    // 5) Respond to Flutter
+    res.json({
+      token,
       user: {
-        _id: user._id,
+        id: user._id,
         fullName: user.fullName,
-        username: user.username,
         email: user.email,
-        phone: user.phone,
-        dateOfBirth: user.dateOfBirth,
-        isVerified: user.isVerified,
+        username: user.username,
       },
     });
-  } catch (error) {
-    console.error('Error in loginUser:', error);
-    return res.status(500).json({ message: 'Server error.' });
+  } catch (err) {
+    console.error('Google OAuth Error:', err);
+    return res.status(401).json({ message: 'Google login failed' });
   }
-};
-
-module.exports = {
-  registerUser,
-  loginUser,
 };
