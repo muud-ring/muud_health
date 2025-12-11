@@ -63,22 +63,25 @@ exports.signup = async (req, res) => {
     // Hash password
     const hashed = await bcrypt.hash(password, 10);
 
-    // Create new user
-    const user = new User({
+    // Build user doc WITHOUT phone/email when they are null
+    const userData = {
       fullName,
       username,
-      email,
-      phone,
       password: hashed,
       dateOfBirth,
-    });
+    };
 
+    if (email) userData.email = email;
+    if (phone) userData.phone = phone;
+
+    // Create new user
+    const user = new User(userData);
     await user.save();
 
     // Create JWT
     const token = createToken(user._id);
 
-    res.json({
+    return res.json({
       token,
       user: {
         id: user._id,
@@ -89,9 +92,25 @@ exports.signup = async (req, res) => {
     });
   } catch (err) {
     console.error('Signup Error:', err);
-    res.status(500).json({ message: 'Signup failed.' });
+
+    // Handle duplicate key errors nicely
+    if (err.code === 11000 && err.keyPattern) {
+      if (err.keyPattern.email) {
+        return res.status(400).json({ message: 'Email already in use.' });
+      }
+      if (err.keyPattern.phone) {
+        return res.status(400).json({ message: 'Phone already in use.' });
+      }
+      if (err.keyPattern.username) {
+        return res.status(400).json({ message: 'Username already in use.' });
+      }
+      return res.status(400).json({ message: 'Duplicate value.' });
+    }
+
+    return res.status(500).json({ message: 'Signup failed.' });
   }
 };
+
 
 // -----------------------------------------------------
 // Login Controller
@@ -115,7 +134,16 @@ exports.login = async (req, res) => {
 
     const token = createToken(user._id);
 
-    res.json({ token });
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        username: user.username,
+      },
+    });
+
   } catch (err) {
     console.error('Login Error:', err);
     res.status(500).json({ message: 'Login failed.' });
@@ -129,13 +157,30 @@ exports.getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.userId);
 
-    if (!user) return res.status(404).json({ message: 'User not found.' });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
 
-    res.json(user);
+    // 👉 Shape that Flutter expects: { user: { ... } }
+    return res.json({
+      user: {
+        id: user._id,
+        fullName: user.fullName || '',
+        username: user.username || '',
+        bio: user.bio || '',
+        location: user.location || '',
+        phone: user.phone || '',
+        email: user.email || '',
+        mood: user.mood || '',
+        avatarUrl: user.avatarUrl || '',
+      },
+    });
   } catch (err) {
-    res.status(500).json({ message: 'Error fetching profile.' });
+    console.error('Get profile error:', err);
+    return res.status(500).json({ message: 'Error fetching profile.' });
   }
 };
+
 
 // -----------------------------------------------------
 // GOOGLE OAUTH LOGIN

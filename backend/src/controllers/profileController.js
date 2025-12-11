@@ -1,31 +1,49 @@
 // backend/src/controllers/profileController.js
+
 const User = require('../models/User');
 
+// -----------------------------------------------------
+// Helper: map User -> profile JSON that Flutter expects
+// -----------------------------------------------------
+const buildProfileResponse = (user) => ({
+  user: {
+    id: user._id,
+    fullName: user.fullName || '',
+    username: user.username || '',
+    bio: user.bio || '',
+    location: user.location || '',
+    phone: user.phone || '',
+    email: user.email || '',
+    mood: user.mood || '',
+    avatarUrl: user.avatarUrl || '',
+  },
+});
+
+// -----------------------------------------------------
 // GET /api/profile/me
+// -----------------------------------------------------
 exports.getMyProfile = async (req, res) => {
   try {
-    const userId = req.user.id; // from authMiddleware (decoded token)
-
-    const user = await User.findById(userId).select(
-      'fullName username email phone dateOfBirth bio location mood avatarUrl onboarding'
-    );
+    // req.userId is set by authMiddleware
+    const user = await User.findById(req.userId);
 
     if (!user) {
       return res.status(404).json({ message: 'User not found.' });
     }
 
-    res.json({ user });
+    return res.json(buildProfileResponse(user));
   } catch (err) {
     console.error('getMyProfile error:', err);
-    res.status(500).json({ message: 'Server error.' });
+    return res.status(500).json({ message: 'Error fetching profile.' });
   }
 };
 
+// -----------------------------------------------------
 // PATCH /api/profile/me
+// -----------------------------------------------------
 exports.updateMyProfile = async (req, res) => {
   try {
-    const userId = req.user.id;
-
+    // Only allow specific fields to be updated from the app
     const allowedFields = [
       'fullName',
       'username',
@@ -37,108 +55,52 @@ exports.updateMyProfile = async (req, res) => {
     ];
 
     const updates = {};
-    allowedFields.forEach((field) => {
+    for (const field of allowedFields) {
       if (req.body[field] !== undefined) {
         updates[field] = req.body[field];
       }
-    });
+    }
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { $set: updates },
-      { new: true, runValidators: true }
-    ).select(
-      'fullName username email phone dateOfBirth bio location mood avatarUrl onboarding'
-    );
+    const user = await User.findByIdAndUpdate(req.userId, updates, {
+      new: true,
+    });
 
     if (!user) {
       return res.status(404).json({ message: 'User not found.' });
     }
 
-    res.json({ user });
+    return res.json(buildProfileResponse(user));
   } catch (err) {
     console.error('updateMyProfile error:', err);
-    res.status(500).json({ message: 'Server error.' });
+    return res.status(500).json({ message: 'Error updating profile.' });
   }
 };
 
-// 🔹 PUT /api/profile/onboarding
-// Used by all onboarding screens to update User.onboarding
+// -----------------------------------------------------
+// PUT /api/profile/onboarding
+// (you can expand this later for onboarding fields)
+// -----------------------------------------------------
 exports.updateOnboarding = async (req, res) => {
   try {
-    const userId = req.user.id;
+    // For now, we just allow arbitrary onboarding data under "onboarding"
+    // Adjust this to match your User schema when you finalize onboarding.
+    const updates = {};
 
-    const {
-      focus,
-      favoriteColor,
-      activities,
-      notificationsEnabled,
-      supportOptions,
-      initialMood,
-      preparingChoice,
-      completed,
-    } = req.body;
-
-    const update = {};
-
-    if (focus !== undefined) {
-      update['onboarding.focus'] = focus;
-    }
-    if (favoriteColor !== undefined) {
-      update['onboarding.favoriteColor'] = favoriteColor;
-    }
-    if (Array.isArray(activities)) {
-      update['onboarding.activities'] = activities;
-    }
-    if (notificationsEnabled !== undefined) {
-      update['onboarding.notificationsEnabled'] = notificationsEnabled;
-    }
-    if (Array.isArray(supportOptions)) {
-      update['onboarding.supportOptions'] = supportOptions;
-    }
-    if (initialMood !== undefined) {
-      update['onboarding.initialMood'] = initialMood;
-    }
-    if (preparingChoice !== undefined) {
-      update['onboarding.preparingChoice'] = preparingChoice;
-    }
-    if (completed !== undefined) {
-      update['onboarding.completed'] = completed;
-      if (completed === true) {
-        update['onboarding.completedAt'] = new Date();
-      }
+    if (req.body.onboarding !== undefined) {
+      updates.onboarding = req.body.onboarding;
     }
 
-    if (Object.keys(update).length === 0) {
-      return res
-        .status(400)
-        .json({ success: false, message: 'No onboarding fields provided' });
-    }
-
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { $set: update },
-      { new: true, runValidators: true }
-    ).select(
-      'fullName username email phone dateOfBirth bio location mood avatarUrl onboarding'
-    );
+    const user = await User.findByIdAndUpdate(req.userId, updates, {
+      new: true,
+    });
 
     if (!user) {
-      return res
-        .status(404)
-        .json({ success: false, message: 'User not found.' });
+      return res.status(404).json({ message: 'User not found.' });
     }
 
-    return res.json({
-      success: true,
-      message: 'Onboarding updated',
-      user,
-    });
+    return res.json(buildProfileResponse(user));
   } catch (err) {
     console.error('updateOnboarding error:', err);
-    res.status(500).json({
-      success: false,
-      message: 'Server error updating onboarding data.',
-    });
+    return res.status(500).json({ message: 'Error updating onboarding.' });
   }
 };
