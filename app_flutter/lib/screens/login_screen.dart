@@ -9,6 +9,7 @@ import '../services/user_storage.dart';
 import '../services/apple_sign_in_service.dart';
 import 'splash_screen.dart';
 import 'signup_screen.dart';
+import 'home_screen.dart'; // 👈 ADD THIS
 
 // ---------- COLORS FROM FIGMA ----------
 const Color kPrimaryPurple = Color(0xFF5B288E);
@@ -96,7 +97,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const SplashScreen()),
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
       } else {
         setState(() {
@@ -164,7 +165,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const SplashScreen()),
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
       } else {
         setState(() {
@@ -215,7 +216,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const SplashScreen()),
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
       );
     } catch (e) {
       if (!mounted) return;
@@ -272,7 +273,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const SplashScreen()),
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
       );
     } catch (e) {
       if (!mounted) return;

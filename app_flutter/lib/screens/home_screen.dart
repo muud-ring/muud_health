@@ -49,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadProtectedProfileAndJournals();
   }
 
-  // 👇 NEW: load name saved at login (email or Google)
+  // 👇 load name saved at login (email or Google)
   Future<void> _loadUserName() async {
     final storedName = await UserStorage.getFullName();
     if (!mounted) return;
@@ -141,35 +141,63 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // 👉 Shared helper: open journal creator and refresh
+  Future<void> _startNewJournal() async {
+    final draft = await Navigator.push<JournalDraft>(
+      context,
+      MaterialPageRoute(builder: (_) => const JournalCreatorEntryScreen()),
+    );
+
+    if (draft != null && mounted) {
+      setState(() {
+        _lastJournalDraft = draft;
+        _currentIndex = 0; // ensure we’re on Home tab
+      });
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Journal saved.')));
+
+      // Also refresh from backend so card reflects real data
+      await _refreshJournals();
+    }
+  }
+
   Widget _buildCurrentTab() {
     switch (_currentIndex) {
       case 0:
-        if (_profile == null) {
-          return HomeTab(fullName: fullName);
-        }
-        return Column(
-          children: [
-            ProfileCard(profile: _profile!, onEdit: _openEditProfile),
-            const SizedBox(height: 16),
-
-            // 👉 Prefer backend journal if available
-            if (_journals.isNotEmpty) ...[
-              // Show a vertical list of all journals
-              Column(
-                children: _journals
-                    .map(
-                      (entry) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: JournalEntryCard(entry: entry),
-                      ),
-                    )
-                    .toList(),
-              ),
+        // ---------- HOME TAB ----------
+        return SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // 1) Greeting at the top (matches Figma)
+              HomeTab(fullName: fullName),
               const SizedBox(height: 16),
-            ],
 
-            Expanded(child: HomeTab(fullName: fullName)),
-          ],
+              // 2) Profile card (if we have a profile)
+              if (_profile != null) ...[
+                ProfileCard(profile: _profile!, onEdit: _openEditProfile),
+                const SizedBox(height: 24),
+              ],
+
+              // 3) Journals list OR empty state
+              if (_journals.isNotEmpty) ...[
+                Column(
+                  children: _journals
+                      .map(
+                        (entry) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: JournalEntryCard(entry: entry),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ] else ...[
+                _HomeEmptyState(onStartJournal: _startNewJournal),
+              ],
+            ],
+          ),
         );
 
       case 1:
@@ -232,15 +260,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       );
                     },
                   ),
-
                   IconButton(
                     icon: const Icon(Icons.lock_outline, size: 26),
                     color: kPrimaryPurple,
                     onPressed: () {},
                   ),
-
                   const Spacer(),
-
                   Text(
                     _currentTitle,
                     style: const TextStyle(
@@ -249,15 +274,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       fontSize: 18,
                     ),
                   ),
-
                   const Spacer(),
-
                   IconButton(
                     icon: const Icon(Icons.stacked_bar_chart, size: 26),
                     color: kPrimaryPurple,
                     onPressed: () {},
                   ),
-
                   IconButton(
                     icon: const Icon(Icons.logout, size: 26),
                     color: kPrimaryPurple,
@@ -311,28 +333,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
             // 👉 Center + button opens Journal Creator and awaits result
             GestureDetector(
-              onTap: () async {
-                final draft = await Navigator.push<JournalDraft>(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const JournalCreatorEntryScreen(),
-                  ),
-                );
-
-                if (draft != null && mounted) {
-                  setState(() {
-                    _lastJournalDraft = draft;
-                    _currentIndex = 0; // ensure we’re on Home tab
-                  });
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Journal saved.')),
-                  );
-
-                  // Also refresh from backend so card reflects real data
-                  _refreshJournals();
-                }
-              },
+              onTap: _startNewJournal,
               child: Container(
                 width: 56,
                 height: 56,
@@ -397,6 +398,65 @@ class _BottomNavItem extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ---------- Empty state for Home when no journals ----------
+class _HomeEmptyState extends StatelessWidget {
+  final VoidCallback onStartJournal;
+
+  const _HomeEmptyState({required this.onStartJournal});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const SizedBox(height: 24),
+        Icon(
+          Icons.data_exploration_outlined,
+          size: 48,
+          color: kPrimaryPurple.withOpacity(0.3),
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          'No Data',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: kPrimaryPurple,
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Your trends will show up here.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 13, color: Colors.grey),
+        ),
+        const SizedBox(height: 24),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: onStartJournal,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: kPrimaryPurple,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30),
+              ),
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            child: const Text(
+              'Start Journaling',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
