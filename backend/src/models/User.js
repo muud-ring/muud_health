@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema(
   {
+    // Basic info
     fullName: {
       type: String,
       required: true,
@@ -31,18 +32,24 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // Password: required only for non-OAuth users
     password: {
       type: String,
-      required: true,
       minlength: 8,
+      required: function () {
+        // If user signed up via Google / Apple / Facebook,
+        // oauthProvider will be set and password is not required.
+        return !this.oauthProvider;
+      },
+      select: false, // do not return password by default
     },
 
     dateOfBirth: {
       type: Date,
       // not required for OAuth users (we'll collect it in onboarding)
     },
-    
 
+    // Email / OTP verification for normal signup
     isVerified: {
       type: Boolean,
       default: false,
@@ -54,6 +61,7 @@ const userSchema = new mongoose.Schema(
       type: Date,
     },
 
+    // Profile fields
     bio: {
       type: String,
       default: '',
@@ -149,46 +157,52 @@ const userSchema = new mongoose.Schema(
         type: Date,
       },
     },
-    // ⬇️ MODIFY your password field like this
-    password: {
-      type: String,
-      // required only if NOT using OAuth
-      required: function () {
-        return !this.oauthProvider; 
-      },
-      select: false, // if you already had this, keep it
-    },
 
-    // ⬇️ NEW FIELDS FOR OAUTH
+    // 🔹 Generic OAuth fields
     oauthProvider: {
       type: String,
       enum: ['google', 'apple', 'facebook', null],
-      default: null,
-    }, // one-line: which provider the user used, or null
+      default: null, // null = normal email/password account
+    },
 
     oauthProviderId: {
-      type: String,
+      type: String, // provider's unique user id
       default: null,
-    }, // one-line: the unique id we get from Google/Apple/Facebook
+    },
 
     emailVerified: {
       type: Boolean,
       default: false,
-    }, // one-line: true when provider confirms email is real
+    },
+
+    // 🔹 Provider-specific IDs (optional but handy for linking)
+    appleId: {
+      type: String,
+      unique: true,
+      sparse: true, // allows many docs with null/undefined
+    },
+
+    facebookId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
   },
   { timestamps: true }
 );
 
-// Hash password before saving, ONLY here
+// Hash password before saving (only when it's modified)
 userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
+  if (!this.isModified('password') || !this.password) return next();
 
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
   next();
 });
 
+// Compare entered password with hashed password
 userSchema.methods.matchPassword = async function (enteredPassword) {
+  if (!this.password) return false; // OAuth accounts won't have passwords
   return await bcrypt.compare(enteredPassword, this.password);
 };
 

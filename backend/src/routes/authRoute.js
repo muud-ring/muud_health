@@ -3,22 +3,28 @@
 const express = require('express');
 const router = express.Router();
 
+// Import functions directly from authController
 const {
   signup,
   login,
-  getProfile,
   oauthGoogle,
+  appleLogin,
+  facebookLogin,
 } = require('../controllers/authController');
 
-// Email / password auth
+// ---------- AUTH ROUTES ----------
+
+// Normal signup & login
 router.post('/signup', signup);
 router.post('/login', login);
 
-// Google OAuth
-router.post('/oauth/google', oauthGoogle);
+// Google OAuth login
+router.post('/google', oauthGoogle);
 
-// (Optional) profile route WITHOUT auth middleware for now
-// You can protect it later once we hook up the auth middleware correctly.
-router.get('/profile', getProfile);
+// Apple Sign-In
+router.post('/apple', appleLogin);
+
+// Facebook Login
+router.post('/facebook', facebookLogin);
 
 module.exports = router;
