@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
+
 import '../services/api_service.dart';
 import '../services/token_storage.dart';
 import '../services/user_storage.dart';
+import '../services/apple_sign_in_service.dart';
 import 'splash_screen.dart';
 import 'signup_screen.dart';
 
@@ -27,19 +31,20 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _errorMessage;
   bool _obscurePassword = true;
 
-  // ---------- GOOGLE SIGN-IN (NEW 7.x API) ----------
-  // Make sure this matches your iOS client ID
+  // ---------- GOOGLE SIGN-IN ----------
   static const String _googleClientId =
       '745123377800-trlcdnr3ac8sh74s6ldb5re5uh0hf2fi.apps.googleusercontent.com';
 
   bool _isGoogleLoading = false;
   bool _googleInitialized = false;
 
+  // ---------- FACEBOOK LOADING ----------
+  bool _isFacebookLoading = false;
+
   Future<void> _ensureGoogleInitialized() async {
     if (_googleInitialized) return;
 
     final GoogleSignIn signIn = GoogleSignIn.instance;
-
     await signIn.initialize(clientId: _googleClientId);
 
     _googleInitialized = true;
@@ -107,7 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // ---------------- GOOGLE LOGIN LOGIC (NEW API) ----------------
+  // ---------------- GOOGLE LOGIN LOGIC ----------------
   Future<void> _handleGoogleSignIn() async {
     if (_isGoogleLoading) return;
 
@@ -117,7 +122,6 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      // 1) Initialize the singleton once
       await _ensureGoogleInitialized();
 
       final GoogleSignIn signIn = GoogleSignIn.instance;
@@ -132,10 +136,7 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      // 2) Start interactive auth flow
       final GoogleSignInAccount user = await signIn.authenticate();
-
-      // 3) Get ID token
       final GoogleSignInAuthentication googleAuth = user.authentication;
       final String? idToken = googleAuth.idToken;
 
@@ -147,13 +148,12 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      // 4) Send ID token to backend
       final result = await ApiService.googleLogin(idToken);
 
       if (!mounted) return;
 
       if (result['success'] == true) {
-        final token = result['token'] as String;
+        final token = result['token'];
         final userData = result['user'];
 
         await TokenStorage.saveToken(token);
@@ -180,6 +180,110 @@ class _LoginScreenState extends State<LoginScreen> {
     } finally {
       if (mounted) {
         setState(() => _isGoogleLoading = false);
+      }
+    }
+  }
+
+  // ---------------- APPLE LOGIN LOGIC ----------------
+  Future<void> _handleAppleSignIn() async {
+    final credential = await AppleSignInService.signIn();
+    if (!mounted) return;
+
+    if (credential == null || credential.identityToken == null) {
+      return; // user cancelled
+    }
+
+    final fullName = [
+      credential.givenName ?? '',
+      credential.familyName ?? '',
+    ].join(' ').trim();
+
+    try {
+      final result = await ApiService.appleLogin(
+        idToken: credential.identityToken!,
+        fullName: fullName.isNotEmpty ? fullName : null,
+      );
+
+      final token = result['token'];
+      final userData = result['user'];
+
+      await TokenStorage.saveToken(token);
+
+      if (userData != null && userData['fullName'] != null) {
+        await UserStorage.saveFullName(userData['fullName']);
+      }
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const SplashScreen()),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Apple Sign-In error: $e';
+      });
+    }
+  }
+
+  // ---------------- FACEBOOK LOGIN LOGIC (NEW) ----------------
+  Future<void> _handleFacebookSignIn() async {
+    if (_isFacebookLoading) return;
+
+    setState(() {
+      _isFacebookLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      // 1) Trigger Facebook login
+      final LoginResult result = await FacebookAuth.instance.login(
+        permissions: ['public_profile', 'email'],
+      );
+
+      if (result.status != LoginStatus.success) {
+        // user cancelled or error
+        setState(() {
+          _errorMessage = 'Facebook login cancelled or failed.';
+        });
+        return;
+      }
+
+      // 2) Get access token
+      final accessToken = result.accessToken?.token;
+      if (accessToken == null) {
+        setState(() {
+          _errorMessage = 'Facebook login failed: No access token.';
+        });
+        return;
+      }
+
+      // 3) Send access token to backend
+      final fbResult = await ApiService.facebookLogin(accessToken);
+
+      final token = fbResult['token'];
+      final userData = fbResult['user'];
+
+      await TokenStorage.saveToken(token);
+
+      if (userData != null && userData['fullName'] != null) {
+        await UserStorage.saveFullName(userData['fullName']);
+      }
+
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const SplashScreen()),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Facebook Sign-In error: $e';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isFacebookLoading = false;
+        });
       }
     }
   }
@@ -389,10 +493,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     onTap: _isGoogleLoading ? null : _handleGoogleSignIn,
                   ),
                   const SizedBox(width: 16),
-                  const _SocialIconButton(assetPath: 'assets/images/apple.png'),
+                  _SocialIconButton(
+                    assetPath: 'assets/images/apple.png',
+                    onTap: _handleAppleSignIn,
+                  ),
                   const SizedBox(width: 16),
-                  const _SocialIconButton(
+                  _SocialIconButton(
                     assetPath: 'assets/images/facebook.png',
+                    onTap: _isFacebookLoading ? null : _handleFacebookSignIn,
                   ),
                 ],
               ),

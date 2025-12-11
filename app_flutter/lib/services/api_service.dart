@@ -326,4 +326,60 @@ class ApiService {
       return {"success": false, "message": "Network error"};
     }
   }
+
+  // ---------- APPLE SIGN-IN ----------
+  static Future<Map<String, dynamic>> appleLogin({
+    required String idToken,
+    String? fullName,
+  }) async {
+    final url = Uri.parse('$baseUrl/api/auth/apple');
+
+    final body = jsonEncode({
+      'idToken': idToken,
+      if (fullName != null) 'fullName': fullName,
+    });
+
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+
+    final data = _safeJsonDecode(response.body);
+
+    // Debug logs (similar to your SIGNUP logs)
+    print('APPLE status: ${response.statusCode}');
+    print('APPLE body: ${response.body}');
+
+    if (response.statusCode == 200) {
+      return data;
+    } else {
+      throw Exception(data['message'] ?? 'Apple Sign-In failed.');
+    }
+  }
+
+  // ---------- FACEBOOK LOGIN ----------
+  static Future<Map<String, dynamic>> facebookLogin(String accessToken) async {
+    final url = Uri.parse('$baseUrl/api/auth/facebook');
+
+    final body = jsonEncode({'accessToken': accessToken});
+
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+
+    final data = _safeJsonDecode(response.body);
+
+    // Debug logs
+    print('FACEBOOK status: ${response.statusCode}');
+    print('FACEBOOK body: ${response.body}');
+
+    if (response.statusCode == 200) {
+      return data; // { token, user: {...} }
+    } else {
+      throw Exception(data['message'] ?? 'Facebook login failed.');
+    }
+  }
 }
