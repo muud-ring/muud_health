@@ -1,12 +1,20 @@
 const mongoose = require("mongoose");
+const path = require("path");
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI);
-    console.log(`✅ MongoDB connected: ${conn.connection.host}`);
-  } catch (error) {
-    console.error("❌ MongoDB connection error:", error.message);
-    process.exit(1); // stop the app if DB fails
+    const caFile = path.join(process.cwd(), "global-bundle.pem");
+
+    const conn = await mongoose.connect(process.env.MONGO_URI, {
+      tls: true,
+      tlsCAFile: caFile,
+      retryWrites: false,
+    });
+
+    console.log(`DB Connected: ${conn.connection.host}`);
+  } catch (err) {
+    console.error("DB connection error:", err);
+    process.exit(1);
   }
 };
 
