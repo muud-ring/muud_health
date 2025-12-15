@@ -7,7 +7,7 @@ import 'package:app_flutter/models/journal/journal_entry.dart';
 
 class ApiService {
   // 🔗 Your Render backend URL (no trailing slash)
-  static const String baseUrl = 'http://localhost:4000';
+  static const String baseUrl = "http://10.0.0.69:4000";
 
   // For production / Render
   // static const String baseUrl = 'https://muud-health.onrender.com';

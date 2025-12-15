@@ -5,9 +5,11 @@ import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import '../services/api_service.dart';
 import '../services/token_storage.dart';
 import '../services/user_storage.dart';
+import '../services/onboarding_storage.dart';
 import '../services/apple_sign_in_service.dart';
 import 'signup_screen.dart';
 import 'home_screen.dart'; // 👈 ADD THIS
+import 'onboarding/onboarding_flow_screen.dart';
 
 // ---------- COLORS FROM FIGMA ----------
 const Color kPrimaryPurple = Color(0xFF5B288E);
@@ -93,9 +95,15 @@ class _LoginScreenState extends State<LoginScreen> {
           await UserStorage.saveFullName(user['fullName']);
         }
 
+        final hasCompleted = await OnboardingStorage.hasCompleted();
+
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          MaterialPageRoute(
+            builder: (_) => hasCompleted
+                ? const HomeScreen()
+                : const OnboardingFlowScreen(),
+          ),
         );
       } else {
         setState(() {
