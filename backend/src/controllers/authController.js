@@ -60,16 +60,15 @@ exports.signup = async (req, res) => {
       }
     }
 
-    // Hash password
-    const hashed = await bcrypt.hash(password, 10);
-
     // Build user doc WITHOUT phone/email when they are null
-    const userData = {
-      fullName,
-      username,
-      password: hashed,
-      dateOfBirth,
-    };
+// NOTE: Do NOT hash here because User model already hashes in pre('save')
+const userData = {
+  fullName,
+  username,
+  password, // raw password; model will hash it
+  dateOfBirth,
+};
+
 
     if (email) userData.email = email;
     if (phone) userData.phone = phone;
@@ -117,11 +116,18 @@ exports.signup = async (req, res) => {
 // -----------------------------------------------------
 exports.login = async (req, res) => {
   try {
-    const { emailOrPhone, password } = req.body;
+    let { emailOrPhone, password } = req.body;
 
-    const user = await User.findOne({
-      $or: [{ email: emailOrPhone }, { phone: emailOrPhone }],
-    }).select('+password');
+if (emailOrPhone && emailOrPhone.includes('@')) {
+  emailOrPhone = emailOrPhone.toLowerCase().trim();
+} else if (emailOrPhone) {
+  emailOrPhone = emailOrPhone.trim();
+}
+
+const user = await User.findOne({
+  $or: [{ email: emailOrPhone }, { phone: emailOrPhone }],
+}).select('+password');
+
 
     if (!user) {
       return res.status(400).json({ message: 'User not found.' });
