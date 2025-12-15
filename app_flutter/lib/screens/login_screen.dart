@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 
 import '../services/api_service.dart';
 import '../services/token_storage.dart';
 import '../services/user_storage.dart';
 import '../services/apple_sign_in_service.dart';
-import 'splash_screen.dart';
 import 'signup_screen.dart';
 import 'home_screen.dart'; // 👈 ADD THIS
 

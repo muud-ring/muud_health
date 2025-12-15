@@ -303,7 +303,7 @@ class ApiService {
 
   // ---------- GOOGLE OAUTH LOGIN ----------
   static Future<Map<String, dynamic>> googleLogin(String idToken) async {
-    final url = Uri.parse('$baseUrl/api/auth/oauth/google');
+    final url = Uri.parse('$baseUrl/api/auth/google');
 
     try {
       final response = await http.post(

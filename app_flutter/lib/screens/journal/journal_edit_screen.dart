@@ -559,7 +559,6 @@ class _VisibilityTile extends StatelessWidget {
   final VoidCallback onTap;
 
   const _VisibilityTile({
-    super.key,
     required this.label,
     required this.icon,
     required this.isSelected,

@@ -9,6 +9,7 @@ import 'package:app_flutter/screens/trends/trends_screen.dart';
 import 'edit_profile_screen.dart';
 import 'package:app_flutter/widgets/home/profile_card.dart';
 import '../services/user_storage.dart';
+import 'explore_screen.dart';
 
 // 👉 People screen
 import 'package:app_flutter/screens/people_screen.dart';
@@ -17,7 +18,6 @@ import 'package:app_flutter/screens/people_screen.dart';
 import 'package:app_flutter/screens/journal/journal_creator_entry_screen.dart';
 import 'package:app_flutter/models/journal/journal_draft.dart';
 import 'package:app_flutter/models/journal/journal_entry.dart';
-import 'package:app_flutter/widgets/home/journal_preview_card.dart';
 import 'package:app_flutter/widgets/home/journal_entry_card.dart';
 
 const Color kPrimaryPurple = Color(0xFF5B288E);
@@ -211,7 +211,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return const PeopleScreen();
 
       case 4:
-        return const Center(child: Text('Explore tab (coming soon)'));
+        return const ExploreScreen();
 
       default:
         return HomeTab(fullName: fullName);

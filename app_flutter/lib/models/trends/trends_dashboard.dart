@@ -1,7 +1,5 @@
 // lib/models/trends/trends_dashboard.dart
 
-import 'dart:convert';
-
 class TrendsDashboard {
   final DailySnapshot dailySnapshot;
   final MoodSummary moodSummary;
