@@ -1,9 +1,10 @@
 // index.js
 
+require("dotenv").config();
 const express = require('express');
-const dotenv = require('dotenv');
 const cors = require('cors');
 const connectDB = require('./config/db');
+const s3Route = require("./routes/s3Route");
 
 const authRoute = require('./routes/authRoute');
 const healthRoute = require('./routes/healthRoute');
@@ -11,7 +12,6 @@ const profileRoute = require('./routes/profileRoute');
 const trendRoutes = require('./routes/trendRoute');
 const journalRoutes = require('./routes/journalRoute');
 
-dotenv.config();
 console.log("➡️ Calling connectDB()");
 connectDB();
 console.log("✅ connectDB() called");
@@ -41,6 +41,8 @@ app.use('/api/auth', authRoute);
 
 // Protected health routes (these can use JWT middleware inside healthRoute)
 app.use('/api/health', healthRoute);
+
+app.use("/api/s3", s3Route);
 
 app.use('/api/profile', profileRoute);
 app.use('/api/trends', trendRoutes);
