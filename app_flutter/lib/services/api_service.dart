@@ -5,6 +5,12 @@ import 'package:http/http.dart' as http;
 import '../models/user_profile.dart';
 import 'package:app_flutter/models/journal/journal_entry.dart';
 
+import 'token_storage.dart';
+import '../models/people/person_summary.dart';
+import '../models/people/person_profile.dart';
+import '../models/chat/conversation.dart';
+import '../models/chat/chat_message.dart';
+
 class ApiService {
   // 🔗 Your Render backend URL (no trailing slash)
   static const String baseUrl = "http://10.0.0.69:4000";
@@ -381,5 +387,170 @@ class ApiService {
     } else {
       throw Exception(data['message'] ?? 'Facebook login failed.');
     }
+  }
+
+  // ---------- AUTH HEADER (JWT) ----------
+  static Future<Map<String, String>> _authHeaders() async {
+    final token = await TokenStorage.getToken();
+    return {
+      'Content-Type': 'application/json',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
+  }
+
+  // =========================
+  // PEOPLE
+  // =========================
+
+  // GET /api/people
+  static Future<List<PersonSummary>> fetchPeople() async {
+    final url = Uri.parse('$baseUrl/api/people');
+    final headers = await _authHeaders();
+
+    final response = await http.get(url, headers: headers);
+
+    print('PEOPLE status: ${response.statusCode}');
+    print('PEOPLE body: ${response.body}');
+
+    if (response.statusCode != 200) {
+      throw Exception('fetchPeople failed: ${response.statusCode}');
+    }
+
+    final decoded = jsonDecode(response.body);
+
+    // supports: [ ... ] OR { people: [ ... ] }
+    final list = (decoded is Map<String, dynamic>)
+        ? (decoded['people'] ?? [])
+        : decoded;
+
+    if (list is! List) return [];
+
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map((e) => PersonSummary.fromJson(e))
+        .toList();
+  }
+
+  // GET /api/people/:id
+  static Future<PersonProfile> fetchPersonProfile(String id) async {
+    final url = Uri.parse('$baseUrl/api/people/$id');
+    final headers = await _authHeaders();
+
+    final response = await http.get(url, headers: headers);
+
+    print('PEOPLE PROFILE status: ${response.statusCode}');
+    print('PEOPLE PROFILE body: ${response.body}');
+
+    if (response.statusCode != 200) {
+      throw Exception('fetchPersonProfile failed: ${response.statusCode}');
+    }
+
+    final decoded = jsonDecode(response.body);
+
+    // supports: { person: {...} } OR { user: {...} } OR direct object
+    final obj = (decoded is Map<String, dynamic>)
+        ? (decoded['person'] ?? decoded['user'] ?? decoded)
+        : <String, dynamic>{};
+
+    return PersonProfile.fromJson(obj as Map<String, dynamic>);
+  }
+
+  // =========================
+  // CHAT
+  // =========================
+
+  // POST /api/chats/conversations
+  static Future<Conversation> createConversation({
+    required List<String> participantIds,
+  }) async {
+    final url = Uri.parse('$baseUrl/api/chats/conversations');
+    final headers = await _authHeaders();
+
+    final response = await http.post(
+      url,
+      headers: headers,
+      body: jsonEncode({'participantIds': participantIds}),
+    );
+
+    print('CREATE CONVO status: ${response.statusCode}');
+    print('CREATE CONVO body: ${response.body}');
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      final body = _safeJsonDecode(response.body);
+      throw Exception(body['message'] ?? 'createConversation failed');
+    }
+
+    final decoded = jsonDecode(response.body);
+    final obj = (decoded is Map<String, dynamic>)
+        ? (decoded['conversation'] ?? decoded)
+        : <String, dynamic>{};
+
+    return Conversation.fromJson(obj as Map<String, dynamic>);
+  }
+
+  // POST /api/chats/messages
+  static Future<ChatMessage> sendMessage({
+    required String conversationId,
+    required String text,
+    String? imageUrl,
+  }) async {
+    final url = Uri.parse('$baseUrl/api/chats/messages');
+    final headers = await _authHeaders();
+
+    final response = await http.post(
+      url,
+      headers: headers,
+      body: jsonEncode({
+        'conversationId': conversationId,
+        'text': text,
+        'imageUrl': imageUrl ?? '',
+      }),
+    );
+
+    print('SEND MSG status: ${response.statusCode}');
+    print('SEND MSG body: ${response.body}');
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      final body = _safeJsonDecode(response.body);
+      throw Exception(body['message'] ?? 'sendMessage failed');
+    }
+
+    final decoded = jsonDecode(response.body);
+    final obj = (decoded is Map<String, dynamic>)
+        ? (decoded['message'] ?? decoded)
+        : <String, dynamic>{};
+
+    return ChatMessage.fromJson(obj as Map<String, dynamic>);
+  }
+
+  // GET /api/chats/conversations/:id/messages
+  static Future<List<ChatMessage>> fetchMessages(String conversationId) async {
+    final url = Uri.parse(
+      '$baseUrl/api/chats/conversations/$conversationId/messages',
+    );
+    final headers = await _authHeaders();
+
+    final response = await http.get(url, headers: headers);
+
+    print('GET MSGS status: ${response.statusCode}');
+    print('GET MSGS body: ${response.body}');
+
+    if (response.statusCode != 200) {
+      throw Exception('fetchMessages failed: ${response.statusCode}');
+    }
+
+    final decoded = jsonDecode(response.body);
+
+    // supports: { messages: [ ... ] } OR [ ... ]
+    final list = (decoded is Map<String, dynamic>)
+        ? (decoded['messages'] ?? [])
+        : decoded;
+
+    if (list is! List) return [];
+
+    return list
+        .whereType<Map<String, dynamic>>()
+        .map((e) => ChatMessage.fromJson(e))
+        .toList();
   }
 }
