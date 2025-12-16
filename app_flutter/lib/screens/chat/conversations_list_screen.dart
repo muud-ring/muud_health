@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:app_flutter/services/api_service.dart';
 import 'package:app_flutter/services/token_storage.dart';
 import 'package:app_flutter/models/chat/conversation_preview.dart';
+import 'package:app_flutter/screens/chat/chat_screen.dart';
+import 'package:app_flutter/services/user_storage.dart';
 
 const Color kPrimaryPurple = Color(0xFF5B288E);
 
@@ -148,9 +150,21 @@ class _ConversationsListScreenState extends State<ConversationsListScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    onTap: () {
-                      // Step B4: open chat screen using conversationId
-                      // Navigator.push(...)
+                    onTap: () async {
+                      final myUserId = await UserStorage.getUserId();
+
+                      if (!context.mounted || myUserId == null) return;
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ChatScreen(
+                            conversationId: c.id,
+                            title: c.otherUserName,
+                            myUserId: myUserId,
+                          ),
+                        ),
+                      );
                     },
                   );
                 },
