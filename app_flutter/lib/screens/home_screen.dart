@@ -19,6 +19,7 @@ import 'package:app_flutter/screens/journal/journal_creator_entry_screen.dart';
 import 'package:app_flutter/models/journal/journal_draft.dart';
 import 'package:app_flutter/models/journal/journal_entry.dart';
 import 'package:app_flutter/widgets/home/journal_entry_card.dart';
+import 'package:app_flutter/screens/chat/conversations_list_screen.dart';
 
 const Color kPrimaryPurple = Color(0xFF5B288E);
 
@@ -276,10 +277,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const Spacer(),
                   IconButton(
-                    icon: const Icon(Icons.stacked_bar_chart, size: 26),
+                    icon: const Icon(Icons.chat_bubble_outline, size: 26),
                     color: kPrimaryPurple,
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ConversationsListScreen(),
+                        ),
+                      );
+                    },
                   ),
+
                   IconButton(
                     icon: const Icon(Icons.logout, size: 26),
                     color: kPrimaryPurple,
