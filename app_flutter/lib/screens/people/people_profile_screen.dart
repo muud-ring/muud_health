@@ -134,6 +134,9 @@ class _PeopleProfileScreenState extends State<PeopleProfileScreen> {
                             builder: (_) => ChatScreen(
                               conversationId: convo.id,
                               title: p.name,
+                              myUserId: convo.participantIds.firstWhere(
+                                (id) => id != widget.personId,
+                              ),
                             ),
                           ),
                         );
