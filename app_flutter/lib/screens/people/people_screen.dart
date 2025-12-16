@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../models/people/person_summary.dart';
-import 'people_profile_screen.dart';
+import '../../screens/people/people_profile_screen.dart';
 
 const Color kPrimaryPurple = Color(0xFF5B288E);
 const Color kLightPurple = Color(0xFFDAC9E8);

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../models/people/person_profile.dart';
+import '../chat/chat_screen.dart';
+import '../../models/chat/conversation.dart';
 
 const Color kPrimaryPurple = Color(0xFF5B288E);
 const Color kLightPurple = Color(0xFFDAC9E8);
@@ -116,11 +118,33 @@ class _PeopleProfileScreenState extends State<PeopleProfileScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Next step: wire chat")),
-                      );
+                    onPressed: () async {
+                      try {
+                        // Create (or return existing) conversation between me + this person
+                        final Conversation convo =
+                            await ApiService.createConversation(
+                              otherUserId: widget.personId,
+                            );
+
+                        if (!context.mounted) return;
+
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ChatScreen(
+                              conversationId: convo.id,
+                              title: p.name,
+                            ),
+                          ),
+                        );
+                      } catch (e) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text("Failed to start chat: $e")),
+                        );
+                      }
                     },
+
                     style: ElevatedButton.styleFrom(
                       backgroundColor: kPrimaryPurple,
                       shape: RoundedRectangleBorder(

@@ -461,7 +461,7 @@ class ApiService {
 
   // POST /api/chats/conversations
   static Future<Conversation> createConversation({
-    required List<String> participantIds,
+    required String otherUserId,
   }) async {
     final url = Uri.parse('$baseUrl/api/chats/conversations');
     final headers = await _authHeaders();
@@ -469,7 +469,7 @@ class ApiService {
     final response = await http.post(
       url,
       headers: headers,
-      body: jsonEncode({'participantIds': participantIds}),
+      body: jsonEncode({'otherUserId': otherUserId}),
     );
 
     print('CREATE CONVO status: ${response.statusCode}');
