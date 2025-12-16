@@ -64,6 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadProtectedProfileAndJournals() async {
     final token = await TokenStorage.getToken();
+    print("✅ JWT TOKEN: $token");
 
     if (token == null) {
       if (!mounted) return;

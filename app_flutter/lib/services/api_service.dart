@@ -11,6 +11,10 @@ import '../models/people/person_profile.dart';
 import '../models/chat/conversation.dart';
 import '../models/chat/chat_message.dart';
 
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../models/chat/conversation_preview.dart';
+
 class ApiService {
   // 🔗 Your Render backend URL (no trailing slash)
   static const String baseUrl = "http://10.0.0.69:4000";
@@ -551,6 +555,34 @@ class ApiService {
     return list
         .whereType<Map<String, dynamic>>()
         .map((e) => ChatMessage.fromJson(e))
+        .toList();
+  }
+
+  static Future<List<ConversationPreview>> getMyConversations(
+    String token,
+  ) async {
+    final url = Uri.parse('$baseUrl/api/chats/conversations');
+
+    final res = await http.get(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    print('GET CONVERSATIONS status: ${res.statusCode}');
+    print('GET CONVERSATIONS body: ${res.body}');
+
+    if (res.statusCode != 200) {
+      throw Exception('Failed to load conversations: ${res.body}');
+    }
+
+    final data = jsonDecode(res.body);
+    final list = (data['conversations'] as List<dynamic>? ?? []);
+
+    return list
+        .map((e) => ConversationPreview.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 }
