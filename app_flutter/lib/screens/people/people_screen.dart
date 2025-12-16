@@ -1,8 +1,7 @@
-// lib/screens/people_screen.dart
-
 import 'package:flutter/material.dart';
-import '../services/api_service.dart';
-import '../models/people/person_summary.dart';
+import '../../services/api_service.dart';
+import '../../models/people/person_summary.dart';
+import 'people_profile_screen.dart';
 
 const Color kPrimaryPurple = Color(0xFF5B288E);
 const Color kLightPurple = Color(0xFFDAC9E8);
@@ -267,7 +266,7 @@ class _InlineError extends StatelessWidget {
   }
 }
 
-// ---------- SUGGESTED FRIENDS ROW (REAL DATA) ----------
+// ---------- SUGGESTED FRIENDS ROW (REAL DATA + TAP TO PROFILE) ----------
 class _SuggestedFriendsRow extends StatelessWidget {
   final List<PersonSummary> people;
   const _SuggestedFriendsRow({required this.people});
@@ -282,40 +281,51 @@ class _SuggestedFriendsRow extends StatelessWidget {
         separatorBuilder: (_, __) => const SizedBox(width: 16),
         itemBuilder: (context, index) {
           final p = people[index];
-          return Column(
-            children: [
-              CircleAvatar(
-                radius: 26,
-                backgroundColor: kLightPurple,
-                backgroundImage:
-                    (p.avatarUrl != null && p.avatarUrl!.isNotEmpty)
-                    ? NetworkImage(p.avatarUrl!)
-                    : null,
-                child: (p.avatarUrl == null || p.avatarUrl!.isEmpty)
-                    ? const Icon(Icons.person, color: Colors.white)
-                    : null,
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: 88,
-                child: Text(
-                  p.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+
+          return GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => PeopleProfileScreen(personId: p.id),
+                ),
+              );
+            },
+            child: Column(
+              children: [
+                CircleAvatar(
+                  radius: 26,
+                  backgroundColor: kLightPurple,
+                  backgroundImage:
+                      (p.avatarUrl != null && p.avatarUrl!.isNotEmpty)
+                      ? NetworkImage(p.avatarUrl!)
+                      : null,
+                  child: (p.avatarUrl == null || p.avatarUrl!.isEmpty)
+                      ? const Icon(Icons.person, color: Colors.white)
+                      : null,
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: 88,
+                  child: Text(
+                    p.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              ),
-              Text(
-                p.username != null && p.username!.isNotEmpty
-                    ? "@${p.username}"
-                    : "",
-                style: const TextStyle(fontSize: 11, color: Colors.black54),
-              ),
-            ],
+                Text(
+                  p.username != null && p.username!.isNotEmpty
+                      ? "@${p.username}"
+                      : "",
+                  style: const TextStyle(fontSize: 11, color: Colors.black54),
+                ),
+              ],
+            ),
           );
         },
       ),

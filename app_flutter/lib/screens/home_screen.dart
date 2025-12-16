@@ -12,7 +12,7 @@ import '../services/user_storage.dart';
 import 'explore_screen.dart';
 
 // 👉 People screen
-import 'package:app_flutter/screens/people_screen.dart';
+import 'package:app_flutter/screens/people/people_screen.dart';
 
 // 👉 Journal frontend draft + backend models
 import 'package:app_flutter/screens/journal/journal_creator_entry_screen.dart';
@@ -208,7 +208,7 @@ class _HomeScreenState extends State<HomeScreen> {
         return const Center(child: Text('New Entry (+)'));
 
       case 3:
-        return const PeopleScreen();
+        return PeopleScreen();
 
       case 4:
         return const ExploreScreen();
