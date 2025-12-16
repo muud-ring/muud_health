@@ -100,3 +100,43 @@ exports.getMessages = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+
+exports.getMyConversations = async (req, res) => {
+  try {
+    const myId = req.user.id;
+
+    const conversations = await Conversation.find({
+      participants: myId,
+    })
+      .populate("participants", "fullName profileImage avatar imageUrl email") // adjust fields if needed
+      .sort({ lastMessageAt: -1, updatedAt: -1 });
+
+    // Build "other user" for 1-1 chats
+    const formatted = conversations.map((c) => {
+      const other =
+        c.participants.find((p) => String(p._id) !== String(myId)) ||
+        c.participants[0];
+
+      return {
+        _id: c._id,
+        otherUser: other
+          ? {
+              _id: other._id,
+              fullName: other.fullName || "User",
+              avatar:
+                other.profileImage || other.avatar || other.imageUrl || "",
+              email: other.email || "",
+            }
+          : null,
+        lastMessageText: c.lastMessageText || "",
+        lastMessageAt: c.lastMessageAt,
+        lastMessageSender: c.lastMessageSender,
+      };
+    });
+
+    return res.json({ conversations: formatted });
+  } catch (err) {
+    console.error("getMyConversations error:", err);
+    return res.status(500).json({ error: "Failed to load conversations" });
+  }
+};
