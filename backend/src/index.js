@@ -11,6 +11,8 @@ const healthRoute = require('./routes/healthRoute');
 const profileRoute = require('./routes/profileRoute');
 const trendRoutes = require('./routes/trendRoute');
 const journalRoutes = require('./routes/journalRoute');
+const peopleRoute = require("./routes/peopleRoute");
+const chatRoute = require("./routes/chatRoute");
 
 console.log("➡️ Calling connectDB()");
 connectDB();
@@ -48,6 +50,8 @@ app.use('/api/profile', profileRoute);
 app.use('/api/trends', trendRoutes);
 
 app.use('/api/journals', journalRoutes);
+app.use("/api/people", peopleRoute);
+app.use("/api/chats", chatRoute);
 
 // Catch-all for unknown routes
 app.use((req, res, next) => {
